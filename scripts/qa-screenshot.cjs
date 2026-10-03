@@ -416,8 +416,10 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
   // navigasi di dalam aplikasi: memuat ulang halaman memang akan mengembalikan data demo
   await page.getByRole('link', { name: /Kembali ke CRM/ }).click()
   await page.waitForTimeout(600)
-  const isiSetelah = (await page.locator('main').innerText()).toLowerCase()
-  catat(isiSetelah.includes('perubahan tahap di sesi ini'), 'pemberitahuan perubahan sesi tidak muncul setelah tahap diubah')
+  // spanduk sesi sekarang satu tempat di shell (di luar <main>), jadi dibaca dari body
+  const isiSetelah = (await page.locator('body').innerText()).toLowerCase()
+  catat(isiSetelah.includes('perubahan pada sesi ini'), 'spanduk sesi tidak muncul setelah tahap lead diubah')
+  catat(isiSetelah.includes('tahap lead dipindahkan'), 'spanduk sesi tidak menyebut jenis perubahan yang terjadi')
   const kartuSetelah = await page.evaluate(() => document.querySelectorAll('main a[href^="/crm/LD-"]').length)
   catat(
     kartuSetelah === leadAktif.length - 1,
@@ -764,8 +766,9 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
   await page2.goto(`${BASE}/crm`, { waitUntil: 'domcontentloaded' })
   await page2.waitForTimeout(700)
   const isiCrmKatalog = await page2.locator('main').innerText()
+  const spandukKatalog = await page2.locator('body').innerText()
   catat(ada(isiCrmKatalog, 'Sari Wulandari'), 'lead dari katalog tidak muncul di CRM')
-  catat(ada(isiCrmKatalog, '1 lead baru dari katalog publik'), 'CRM tidak memberi tahu ada lead baru dari katalog')
+  catat(ada(spandukKatalog, '1 lead baru dari katalog publik'), 'CRM tidak memberi tahu ada lead baru dari katalog')
   const chipDariKatalog = await page2.evaluate(() =>
     [...document.querySelectorAll('main a')].some((a) => a.innerText.includes('Sari Wulandari')),
   )

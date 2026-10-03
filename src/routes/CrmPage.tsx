@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  ArrowRight, CalendarClock, Columns3, List, MessageSquare, Phone, RotateCcw, Search, X,
+  ArrowRight, CalendarClock, Columns3, List, MessageSquare, Phone, Search, X,
 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
@@ -14,8 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { STATUS_LEAD, TAHAP_PIPELINE } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { bebanSales, leadPerSumber, ringkasanLead } from '@/data/agregat-lead'
-import { TAHAP_BERIKUTNYA, tahapEfektif, useLeadStore } from '@/store/leads'
-import { usePermintaanStore } from '@/store/inquiry'
+import { TAHAP_LEAD_BERIKUTNYA, useSesi } from '@/store/sesi'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 import type { Lead, LeadStatus } from '@/data/types'
 
@@ -28,11 +27,12 @@ export function CrmPage() {
   const sumber = params.get('sumber') ?? 'SEMUA'
   const tampilan = (params.get('tampilan') ?? 'papan') as Tampilan
 
-  const { perubahan, pindahkan, reset, riwayat } = useLeadStore()
-  const { masuk: dariKatalog, reset: resetKatalog } = usePermintaanStore()
+  const sesi = useSesi()
+  const { pindahkanLead: pindahkan, riwayatLead: riwayat } = sesi
 
-  // minat dari katalog publik ikut dihitung: papan, KPI, dan filter harus cocok dengan isinya
-  const semua = useMemo(() => [...dariKatalog, ...dataset.leads], [dariKatalog])
+  // dataset.leads sudah merupakan tampilan langsung: lead dasar + lead sesi + tahap sesi.
+  // Jadi papan, KPI, dan filter membaca daftar yang sama tanpa penggabungan manual.
+  const semua = dataset.leads
 
   const atur = (kunci: string, nilai: string) => {
     const berikut = new URLSearchParams(params)
@@ -41,9 +41,9 @@ export function CrmPage() {
     setParams(berikut, { replace: true })
   }
 
-  const ringkas = useMemo(() => ringkasanLead(dariKatalog), [dariKatalog])
-  const perSumber = useMemo(() => leadPerSumber(dariKatalog), [dariKatalog])
-  const beban = useMemo(() => bebanSales(dariKatalog), [dariKatalog])
+  const ringkas = useMemo(() => ringkasanLead(), [])
+  const perSumber = useMemo(() => leadPerSumber(), [])
+  const beban = useMemo(() => bebanSales(), [])
 
   const terfilter = useMemo(() => {
     const kata = q.trim().toLowerCase()
@@ -59,35 +59,22 @@ export function CrmPage() {
   const papan = useMemo(
     () =>
       TAHAP_PIPELINE.map((tahap) => {
-        const daftar = terfilter.filter((l) => tahapEfektif(l.id, l.status, perubahan) === tahap)
+        const daftar = terfilter.filter((l) => l.status === tahap)
         return {
           tahap,
           daftar: daftar.sort((a, b) => ((a.nextFollowUp ?? '9999') < (b.nextFollowUp ?? '9999') ? -1 : 1)),
           nilai: daftar.reduce((s, l) => s + l.budget, 0),
         }
       }),
-    [terfilter, perubahan],
+    [terfilter],
   )
 
-  const selesai = terfilter.filter((l) => ['WON', 'LOST'].includes(tahapEfektif(l.id, l.status, perubahan)))
+  const selesai = terfilter.filter((l) => ['WON', 'LOST'].includes(l.status))
   const adaFilter = q !== '' || pic !== 'SEMUA' || sumber !== 'SEMUA'
-  const adaPerubahan = Object.keys(perubahan).length > 0
+  const adaPerubahan = Object.keys(sesi.tahapLead).length > 0
 
   return (
     <div className="space-y-4">
-      {dariKatalog.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-accent/30 bg-accent-soft px-3 py-2.5">
-          <p className="text-2xs leading-relaxed text-ink-2">
-            <span className="font-medium text-accent">{dariKatalog.length} lead baru dari katalog publik</span> masuk
-            pada tab ini ({dariKatalog.map((l) => l.id).join(', ')}). Sumbernya Website, sudah ditugaskan ke sales
-            dengan lead aktif paling sedikit, dan ikut terhitung pada angka di halaman ini.
-          </p>
-          <Button variant="ghost" size="sm" onClick={resetKatalog}>
-            Kembalikan ke data demo
-          </Button>
-        </div>
-      )}
-
       <StripRingkas kolom={5}>
         <SelRingkas label="Lead Aktif" nilai={<Angka nilai={ringkas.aktif} ukuran="xl" />} catatan={`dari ${ringkas.total} lead yang pernah masuk`} />
         <SelRingkas label="Nilai Pipeline" nilai={<Money nilai={ringkas.nilaiPipeline} ukuran="xl" ringkas />} catatan={`Rata-rata ${rupiahRingkas(ringkas.rataBudget)} per lead`} />
@@ -160,14 +147,11 @@ export function CrmPage() {
       </div>
 
       {adaPerubahan && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border border-accent/30 bg-accent-soft rounded-panel px-3 py-2">
-          <p className="text-2xs text-accent">
-            {riwayat.length} perubahan tahap di sesi ini. Demo ini tanpa backend — perubahan tidak tersimpan dan
-            kembali seperti semula setelah halaman dimuat ulang.
+        <div className="flex flex-wrap items-center gap-2 rounded-panel border border-hairline bg-sunken px-3 py-2">
+          <p className="text-2xs text-ink-2">
+            <span className="font-medium text-ink">{riwayat.length} perubahan tahap lead</span> pada sesi ini — kartu
+            yang dipindahkan ditandai, dan seluruh angka di halaman ini ikut menyesuaikan.
           </p>
-          <Button variant="ghost" size="sm" onClick={reset} ikon={<RotateCcw size={13} />}>
-            Kembalikan ke data demo
-          </Button>
         </div>
       )}
 
@@ -192,7 +176,7 @@ export function CrmPage() {
                   <ul className="flex-1 space-y-px p-2">
                     {kolom.daftar.length === 0 && <li className="px-1 py-3 text-center text-2xs text-ink-3">Tidak ada lead</li>}
                     {kolom.daftar.map((l) => (
-                      <KartuLead key={l.id} lead={l} tahap={kolom.tahap} onChangeTahap={pindahkan} />
+                      <KartuLead key={l.id} lead={l} tahap={kolom.tahap} onChangeTahap={(id, dari, ke) => pindahkan(id, dari, ke, l.nama)} />
                     ))}
                   </ul>
                 </section>
@@ -203,7 +187,7 @@ export function CrmPage() {
           <div className="flex flex-wrap items-center gap-2 border border-hairline bg-panel rounded-panel px-3 py-2.5">
             <span className="label-caps">Sudah selesai</span>
             {(['WON', 'LOST'] as LeadStatus[]).map((t) => {
-              const jml = selesai.filter((l) => tahapEfektif(l.id, l.status, perubahan) === t).length
+              const jml = selesai.filter((l) => l.status === t).length
               return (
                 <span key={t} className="inline-flex items-center gap-1.5 rounded-pill bg-sunken px-2 py-0.5 text-2xs text-ink-2">
                   <span className={`h-1.5 w-1.5 rounded-pill ${STATUS_LEAD[t].dot}`} aria-hidden />
@@ -233,7 +217,7 @@ export function CrmPage() {
             </THead>
             <tbody>
               {terfilter.map((l) => {
-                const tahap = tahapEfektif(l.id, l.status, perubahan)
+                const tahap = l.status
                 const lewat = l.nextFollowUp && l.nextFollowUp <= DEMO_TODAY && !['WON', 'LOST'].includes(tahap)
                 return (
                   <Baris key={l.id}>
@@ -350,7 +334,7 @@ function KartuLead({
   tahap: LeadStatus
   onChangeTahap: (leadId: string, dari: LeadStatus, ke: LeadStatus) => void
 }) {
-  const berikutnya = TAHAP_BERIKUTNYA[tahap]
+  const berikutnya = TAHAP_LEAD_BERIKUTNYA[tahap]
   const lewat = lead.nextFollowUp && lead.nextFollowUp <= DEMO_TODAY
 
   return (

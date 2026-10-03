@@ -6,7 +6,7 @@ import { IdChip } from '@/components/ui/IdChip'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { STATUS_LEAD } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
-import { useLeadStore } from '@/store/leads'
+import { useSesi } from '@/store/sesi'
 import { jarakHari, persen, rupiahRingkas, tanggalPanjang, tanggalPendek, jam } from '@/lib/format'
 import type { LeadStatus } from '@/data/types'
 
@@ -14,7 +14,9 @@ const TAHAP_AKTIF: LeadStatus[] = ['NEW', 'CONTACTED', 'INTERESTED', 'TEST DRIVE
 
 export function LeadDetailPage() {
   const { leadId = '' } = useParams()
-  const { perubahan, pindahkan } = useLeadStore()
+  const sesi = useSesi()
+  const perubahan = sesi.tahapLead
+  const pindahkan = sesi.pindahkanLead
   const lead = dataset.leads.find((l) => l.id === leadId)
 
   if (!lead) {
@@ -32,7 +34,7 @@ export function LeadDetailPage() {
     )
   }
 
-  const tahap = perubahan[lead.id] ?? lead.status
+  const tahap = lead.status
   const customer = dataset.customers.find((c) => c.id === lead.customerId)
   const unit = dataset.vehicles.find((v) => v.id === lead.vehicleId)
   const booking = dataset.bookings.find((b) => b.leadId === lead.id)
@@ -192,7 +194,7 @@ export function LeadDetailPage() {
               <p className="label-caps">Ubah tahap lead</p>
               <select
                 value={tahap}
-                onChange={(e) => pindahkan(lead.id, tahap, e.target.value as LeadStatus)}
+                onChange={(e) => pindahkan(lead.id, tahap, e.target.value as LeadStatus, lead.nama)}
                 aria-label="Ubah tahap lead"
                 className="mt-1.5 h-8 w-full rounded-control border border-hairline-strong bg-panel px-2 text-xs text-ink hover:bg-sunken"
               >

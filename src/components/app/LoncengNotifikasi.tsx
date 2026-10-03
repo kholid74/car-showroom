@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bell, CircleAlert, Info } from 'lucide-react'
 import { notifikasiHariIni } from '@/data/agregat-laporan'
-import { usePermintaanStore } from '@/store/inquiry'
+import { useSesi } from '@/store/sesi'
 import { tanggalPanjang } from '@/lib/format'
 import { dataset } from '@/data'
 
 export function LoncengNotifikasi() {
   const [terbuka, setTerbuka] = useState(false)
   const kotakRef = useRef<HTMLDivElement>(null)
-  const dariKatalog = usePermintaanStore((s) => s.masuk)
+  const dariKatalog = useSesi((s) => s.leadKatalog)
   const daftar = useMemo(() => {
     const dasar = notifikasiHariIni()
     if (dariKatalog.length === 0) return dasar

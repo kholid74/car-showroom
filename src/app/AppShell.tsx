@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ExternalLink, LogOut, Menu, X } from 'lucide-react'
+import { ExternalLink, LogOut, Menu, X, CircleAlert, RotateCcw } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { jumlahPerubahan, ringkasPerubahan, useSesi } from '@/store/sesi'
 import { PencarianGlobal } from '@/components/app/PencarianGlobal'
 import { LoncengNotifikasi } from '@/components/app/LoncengNotifikasi'
 import { navigasiUntukPeran, semuaItemNav, type GrupNav } from './nav'
@@ -106,6 +108,8 @@ function IsiSidebar({
 
 export function AppShell() {
   const { pengguna, keluar, gantiPeran } = useAuth()
+  const sesi = useSesi()
+  const jumlahUbah = jumlahPerubahan(sesi)
   const lokasi = useLocation()
   const role = pengguna?.role ?? 'OWNER'
   const grup = navigasiUntukPeran(role)
@@ -248,7 +252,27 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-4 md:px-5 md:py-5">
+        {/* Spanduk sesi: satu tempat untuk semua modul, supaya tidak ada layar yang
+            menulis data tanpa menyatakan bahwa penyimpanannya hanya bertahan selama tab ini. */}
+        {jumlahUbah > 0 && (
+          <div className="border-b border-attention/30 bg-attention/5 px-4 py-2 md:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-start gap-2 text-2xs leading-relaxed text-ink-2">
+                <CircleAlert size={13} className="mt-0.5 shrink-0 text-attention" />
+                <span>
+                  <span className="font-medium text-ink">{jumlahUbah} perubahan pada sesi ini</span>
+                  {ringkasPerubahan(sesi) ? ` — ${ringkasPerubahan(sesi)}` : ''}. Demo ini tanpa backend: perubahan
+                  hidup di tab ini dan hilang saat tab ditutup, tetapi seluruh angka di semua modul ikut menyesuaikan.
+                </span>
+              </p>
+              <Button variant="secondary" size="sm" onClick={sesi.reset} ikon={<RotateCcw size={13} />}>
+                Kembalikan ke data demo
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <main key={sesi.versi} className="min-w-0 flex-1 px-4 py-4 md:px-5 md:py-5">
           <Outlet />
         </main>
 

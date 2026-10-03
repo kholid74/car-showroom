@@ -5,7 +5,8 @@ import { dataset, DEMO_TODAY } from '@/data'
 import { Money } from '@/components/ui/Money'
 import { Button } from '@/components/ui/Button'
 import { SlotFoto } from './KatalogPage'
-import { usePermintaanStore } from '@/store/inquiry'
+import { useSesi } from '@/store/sesi'
+import { bebanSales } from '@/data/agregat-lead'
 import { jarakHari, kilometer, rupiahRingkas, tanggalPendek } from '@/lib/format'
 import type { StatusDokumen, TipePembayaran } from '@/data/types'
 
@@ -17,7 +18,7 @@ const WARNA_DOKUMEN: Record<StatusDokumen, string> = {
 
 export function KatalogDetailPage() {
   const { id } = useParams()
-  const kirim = usePermintaanStore((s) => s.kirim)
+  const kirim = useSesi((s) => s.tambahLead)
 
   const unit = useMemo(() => dataset.vehicles.find((v) => v.id === id), [id])
   const inspeksi = useMemo(() => dataset.inspections.find((i) => i.vehicleId === id), [id])
@@ -31,6 +32,10 @@ export function KatalogDetailPage() {
   const [galat, setGalat] = useState<string[]>([])
   const [hasil, setHasil] = useState<{ id: string; salesPIC: string; followUp: string } | null>(null)
   const [catatanWa, setCatatanWa] = useState(false)
+
+  /** Sales penerima lead: yang beban lead aktifnya paling sedikit, dihitung dari data. */
+  const salesPalingLengang = () =>
+    [...bebanSales()].sort((a, b) => a.aktif - b.aktif)[0]?.sales ?? dataset.salesTeam[0].nama
 
   if (!unit) {
     return (
@@ -59,14 +64,20 @@ export function KatalogDetailPage() {
     if (telepon.replace(/\D/g, '').length < 9) masalah.push('Nomor telepon minimal 9 angka.')
     setGalat(masalah)
     if (masalah.length) return
-    const lead = kirim({
-      nama,
-      telepon,
-      pesan,
-      vehicleId: unit.id,
-      tipePembayaran: bayar,
-      budget: unit.listingPrice,
-    })
+    const lead = kirim(
+      {
+        nama,
+        telepon,
+        sumber: 'Website',
+        vehicleId: unit.id,
+        vehicleLabel: `${unit.brand} ${unit.model} ${unit.variant}`,
+        budget: unit.listingPrice,
+        preferensiPembayaran: bayar,
+        salesPIC: salesPalingLengang(),
+        catatan: pesan,
+      },
+      'KATALOG',
+    )
     setHasil({ id: lead.id, salesPIC: lead.salesPIC, followUp: lead.nextFollowUp ?? DEMO_TODAY })
     setNama('')
     setTelepon('')
