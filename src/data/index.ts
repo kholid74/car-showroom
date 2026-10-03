@@ -1,4 +1,4 @@
-import type { Dataset, Lead, Sale, Vehicle } from './types'
+import type { Dataset, Lead, Procurement, Sale, Vehicle, VehicleDocuments } from './types'
 import raw from './dataset.json'
 import { useSesi } from '@/store/sesi'
 import { DEMO_TODAY, bulanIni } from './meta'
@@ -9,8 +9,8 @@ import { selisihHari } from '@/lib/format'
  *
  * `dataset` di bawah ini bukan salinan JSON apa adanya, melainkan tampilan **langsung**
  * (live view): data dasar dari scripts/generate-dataset.mjs digabung dengan apa pun yang
- * dibuat atau diubah pengunjung pada sesi ini — penjualan yang dicatat, lead yang
- * ditambahkan, tahap yang dipindahkan, status unit yang diubah.
+ * dibuat atau diubah pengunjung pada sesi ini — unit yang dimasukkan, data unit yang
+ * diperbarui, dokumen yang diubah statusnya, lead baru, penjualan yang dicatat.
  *
  * Kenapa getter, bukan salinan: supaya SETIAP modul (dashboard, finance, laporan, aging)
  * otomatis melihat angka yang sama begitu ada data baru, tanpa perlu tiap halaman
@@ -38,31 +38,47 @@ function memo<T>(hitung: () => T): () => T {
   }
 }
 
-const kendaraan = memo<Vehicle[]>(() =>
-  sesi.statusUnit && Object.keys(sesi.statusUnit).length
-    ? dasar.vehicles.map((v) => {
-        const status = sesi.statusUnit[v.id]
-        if (!status) return v
-        const siap = sesi.tanggalSiap?.[v.id] ?? v.tanggalSiap
-        return {
-          ...v,
-          status,
-          tanggalSiap: siap,
-          hariSejakSiap: siap ? Math.max(0, selisihHari(siap, DEMO_TODAY)) : v.hariSejakSiap,
-        }
-      })
-    : dasar.vehicles,
-)
+const ada = (o: Record<string, unknown> | undefined) => Boolean(o && Object.keys(o).length)
+
+const kendaraan = memo<Vehicle[]>(() => {
+  const unitBaru = sesi.unitBaru ?? []
+  const ubah = sesi.ubahUnit ?? {}
+  const status = sesi.statusUnit ?? {}
+  if (!unitBaru.length && !ada(ubah) && !ada(status)) return dasar.vehicles
+
+  return [...unitBaru, ...dasar.vehicles].map((v) => {
+    let unit = ubah[v.id] ? { ...v, ...ubah[v.id] } : v
+    const statusBaru = status[unit.id]
+    if (statusBaru) {
+      const siap = sesi.tanggalSiap?.[unit.id] ?? unit.tanggalSiap
+      unit = {
+        ...unit,
+        status: statusBaru,
+        tanggalSiap: siap,
+        hariSejakSiap: siap ? Math.max(0, selisihHari(siap, DEMO_TODAY)) : unit.hariSejakSiap,
+      }
+    }
+    return unit
+  })
+})
 
 const lead = memo<Lead[]>(() => {
-  const dasarDenganTahap = Object.keys(sesi.tahapLead ?? {}).length
-    ? dasar.leads.map((l) => {
-        const tahap = sesi.tahapLead[l.id]
-        return tahap ? { ...l, status: tahap } : l
-      })
-    : dasar.leads
-  const tambahan = [...(sesi.leadBaru ?? []), ...(sesi.leadKatalog ?? [])]
-  return tambahan.length ? [...tambahan, ...dasarDenganTahap] : dasarDenganTahap
+  const ubah = sesi.ubahLead ?? {}
+  const tahap = sesi.tahapLead ?? {}
+  const dasarDisesuaikan =
+    ada(ubah) || ada(tahap)
+      ? dasar.leads.map((l) => {
+          let hasil = ubah[l.id] ? { ...l, ...ubah[l.id] } : l
+          const tahapBaru = tahap[hasil.id]
+          if (tahapBaru) hasil = { ...hasil, status: tahapBaru }
+          return hasil
+        })
+      : dasar.leads
+
+  const tambahan = [...(sesi.leadBaru ?? []), ...(sesi.leadKatalog ?? [])].map((l) =>
+    ubah[l.id] ? { ...l, ...ubah[l.id] } : l,
+  )
+  return tambahan.length ? [...tambahan, ...dasarDisesuaikan] : dasarDisesuaikan
 })
 
 const penjualan = memo<Sale[]>(() =>
@@ -71,10 +87,30 @@ const penjualan = memo<Sale[]>(() =>
 
 const pemesanan = memo(() =>
   (sesi.bookingSelesai ?? []).length
-    ? dasar.bookings.map((b) =>
-        sesi.bookingSelesai.includes(b.id) ? { ...b, statusPembayaran: 'SELESAI' } : b,
-      )
+    ? dasar.bookings.map((b) => (sesi.bookingSelesai.includes(b.id) ? { ...b, statusPembayaran: 'SELESAI' } : b))
     : dasar.bookings,
+)
+
+const dokumen = memo<VehicleDocuments[]>(() => {
+  const perubahan = sesi.ubahDokumen ?? {}
+  const baru = sesi.dokumenBaru ?? []
+  if (!ada(perubahan) && !baru.length) return dasar.documents
+
+  const dasarDisesuaikan = dasar.documents.map((d) => {
+    const ubahan = perubahan[d.vehicleId]
+    if (!ubahan) return d
+    return {
+      ...d,
+      checklist: d.checklist.map((c) =>
+        ubahan[c.nama] ? { ...c, status: ubahan[c.nama].status as typeof c.status, nomor: ubahan[c.nama].nomor } : c,
+      ),
+    }
+  })
+  return [...baru, ...dasarDisesuaikan]
+})
+
+const pengadaan = memo<Procurement[]>(() =>
+  (sesi.procurementBaru ?? []).length ? [...sesi.procurementBaru, ...dasar.procurements] : dasar.procurements,
 )
 
 export const dataset: Dataset = {
@@ -90,6 +126,12 @@ export const dataset: Dataset = {
   },
   get bookings() {
     return pemesanan()
+  },
+  get documents() {
+    return dokumen()
+  },
+  get procurements() {
+    return pengadaan()
   },
 }
 

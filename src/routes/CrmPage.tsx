@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  ArrowRight, CalendarClock, Columns3, List, MessageSquare, Phone, Search, X,
+  ArrowRight, CalendarClock, Columns3, List, MessageSquare, Phone, Plus, Search, X,
 } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
@@ -15,6 +15,7 @@ import { STATUS_LEAD, TAHAP_PIPELINE } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { bebanSales, leadPerSumber, ringkasanLead } from '@/data/agregat-lead'
 import { TAHAP_LEAD_BERIKUTNYA, useSesi } from '@/store/sesi'
+import { FormLead } from '@/components/app/FormLead'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 import type { Lead, LeadStatus } from '@/data/types'
 
@@ -29,6 +30,7 @@ export function CrmPage() {
 
   const sesi = useSesi()
   const { pindahkanLead: pindahkan, riwayatLead: riwayat } = sesi
+  const [formLead, setFormLead] = useState(false)
 
   // dataset.leads sudah merupakan tampilan langsung: lead dasar + lead sesi + tahap sesi.
   // Jadi papan, KPI, dan filter membaca daftar yang sama tanpa penggabungan manual.
@@ -129,6 +131,10 @@ export function CrmPage() {
             ))}
           </select>
 
+          <Button variant="primary" size="sm" ikon={<Plus size={13} />} onClick={() => setFormLead(true)}>
+            Tambah lead
+          </Button>
+
           <SakelarTampilan<Tampilan>
             nilai={tampilan}
             onChange={(v) => atur('tampilan', v)}
@@ -145,6 +151,8 @@ export function CrmPage() {
           )}
         </div>
       </div>
+
+      <FormLead terbuka={formLead} onTutup={() => setFormLead(false)} />
 
       {adaPerubahan && (
         <div className="flex flex-wrap items-center gap-2 rounded-panel border border-hairline bg-sunken px-3 py-2">

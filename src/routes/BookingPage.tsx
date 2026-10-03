@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarClock, ChevronRight, Search, X } from 'lucide-react'
+import { CalendarClock, ChevronRight, Receipt, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/Button'
 import { STATUS_PEMBAYARAN, STATUS_UNIT } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { ringkasanBooking } from '@/data/agregat-keuangan'
+import type { Booking, Vehicle } from '@/data/types'
+import { FormPenjualan } from '@/components/app/FormPenjualan'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 
 export function BookingPage() {
@@ -27,6 +29,7 @@ export function BookingPage() {
   }
 
   const ringkas = useMemo(() => ringkasanBooking(), [])
+  const [formJual, setFormJual] = useState<{ unit: Vehicle; booking: Booking } | null>(null)
   const daftarStatus = useMemo(() => [...new Set(dataset.bookings.map((b) => b.statusPembayaran))], [])
 
   const semua = useMemo(
@@ -232,13 +235,26 @@ export function BookingPage() {
                         />
                       </Td>
                       <Td align="right">
-                        <Link
-                          to={`/inventory/${b.vehicleId}?tab=penjualan`}
-                          aria-label={`Buka unit ${b.vehicleId}`}
-                          className="inline-flex text-ink-3 hover:text-accent"
-                        >
-                          <ChevronRight size={15} />
-                        </Link>
+                        <span className="inline-flex items-center gap-1">
+                          {aktif && unit && (
+                            <button
+                              type="button"
+                              onClick={() => setFormJual({ unit, booking: b })}
+                              aria-label={`Catat penjualan ${unit.id}`}
+                              title="Catat penjualan unit ini"
+                              className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-money-pos"
+                            >
+                              <Receipt size={14} />
+                            </button>
+                          )}
+                          <Link
+                            to={`/inventory/${b.vehicleId}?tab=penjualan`}
+                            aria-label={`Buka unit ${b.vehicleId}`}
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <ChevronRight size={15} />
+                          </Link>
+                        </span>
                       </Td>
                     </Baris>
                   )
@@ -294,6 +310,10 @@ export function BookingPage() {
           </Panel>
         </div>
       </div>
+
+      {formJual && (
+        <FormPenjualan terbuka unit={formJual.unit} booking={formJual.booking} onTutup={() => setFormJual(null)} />
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, ChevronRight, Info, Phone, RotateCcw, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, Info, Pencil, Phone, RotateCcw, UserRound } from 'lucide-react'
 import { Panel, Baris as BarisKV } from '@/components/ui/Panel'
 import { Money } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -7,6 +8,8 @@ import { StatusPill } from '@/components/ui/StatusPill'
 import { STATUS_LEAD } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { useSesi } from '@/store/sesi'
+import { FormLead } from '@/components/app/FormLead'
+import { Button } from '@/components/ui/Button'
 import { jarakHari, persen, rupiahRingkas, tanggalPanjang, tanggalPendek, jam } from '@/lib/format'
 import type { LeadStatus } from '@/data/types'
 
@@ -17,6 +20,7 @@ export function LeadDetailPage() {
   const sesi = useSesi()
   const perubahan = sesi.tahapLead
   const pindahkan = sesi.pindahkanLead
+  const [formUbah, setFormUbah] = useState(false)
   const lead = dataset.leads.find((l) => l.id === leadId)
 
   if (!lead) {
@@ -53,6 +57,9 @@ export function LeadDetailPage() {
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold tracking-tight text-ink">{lead.nama}</h2>
             <StatusPill label={STATUS_LEAD[tahap].label} pil={STATUS_LEAD[tahap].halus} dot={STATUS_LEAD[tahap].dot} />
+            <Button variant="secondary" size="sm" ikon={<Pencil size={13} />} onClick={() => setFormUbah(true)}>
+              Ubah lead
+            </Button>
             {perubahan[lead.id] && (
               <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-2xs text-accent">
                 tahap diubah di sesi demo (dari {STATUS_LEAD[lead.status].label})
@@ -261,6 +268,8 @@ export function LeadDetailPage() {
           )}
         </aside>
       </div>
+
+      <FormLead terbuka={formUbah} lead={lead} onTutup={() => setFormUbah(false)} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowUp, ChevronRight, FileWarning, LayoutGrid, List, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronRight, FileWarning, LayoutGrid, List, Pencil, Plus, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/Button'
 import { STATUS_UNIT, URUTAN_STATUS, keteranganAging } from '@/lib/status'
 import { dataset } from '@/data'
 import { dokumenByUnit } from '@/data/selectors'
+import { FormUnit } from '@/components/app/FormUnit'
+import { FormTahapUnit } from '@/components/app/FormTahapUnit'
 import { kilometer, tanggalPendek } from '@/lib/format'
 import type { UnitStatus, Vehicle } from '@/data/types'
 
@@ -41,6 +43,8 @@ const LABEL_URUT: Record<KunciUrut, string> = {
 
 export function InventoryPage() {
   const [params, setParams] = useSearchParams()
+  const [formUnit, setFormUnit] = useState<{ terbuka: boolean; unit?: Vehicle }>({ terbuka: false })
+  const [formTahap, setFormTahap] = useState<Vehicle | null>(null)
 
   const q = params.get('q') ?? ''
   const status = (params.get('status') ?? 'SEMUA') as UnitStatus | 'SEMUA'
@@ -189,6 +193,15 @@ export function InventoryPage() {
             ]}
           />
 
+          <Button
+            variant="primary"
+            size="sm"
+            ikon={<Plus size={13} />}
+            onClick={() => setFormUnit({ terbuka: true })}
+          >
+            Tambah unit
+          </Button>
+
           {adaFilter && (
             <Button
               variant="ghost"
@@ -292,9 +305,29 @@ export function InventoryPage() {
                       <span className="text-2xs text-ink-2">{v.salesPIC}</span>
                     </Td>
                     <Td align="right">
-                      <Link to={`/inventory/${v.id}`} aria-label={`Buka detail ${v.id}`} className="inline-flex text-ink-3 hover:text-accent">
-                        <ChevronRight size={15} />
-                      </Link>
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormUnit({ terbuka: true, unit: v })}
+                          aria-label={`Ubah data ${v.id}`}
+                          title="Ubah data unit"
+                          className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormTahap(v)}
+                          aria-label={`Ubah tahap ${v.id}`}
+                          title="Ubah tahap unit"
+                          className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <Link to={`/inventory/${v.id}`} aria-label={`Buka detail ${v.id}`} className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent">
+                          <ChevronRight size={15} />
+                        </Link>
+                      </span>
                     </Td>
                   </Baris>
                 )
@@ -366,19 +399,36 @@ export function InventoryPage() {
                     Sales: {v.salesPIC}
                     {dokBermasalah > 0 && <span className="text-danger"> · {dokBermasalah} dokumen belum lengkap</span>}
                   </span>
-                  <Link
-                    to={`/inventory/${v.id}`}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-control px-1.5 py-0.5 text-2xs font-medium text-accent hover:bg-accent-soft"
-                  >
-                    Detail
-                    <ChevronRight size={13} />
-                  </Link>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setFormUnit({ terbuka: true, unit: v })}
+                      aria-label={`Ubah data ${v.id}`}
+                      className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <Link
+                      to={`/inventory/${v.id}`}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-control px-1.5 py-0.5 text-2xs font-medium text-accent hover:bg-accent-soft"
+                    >
+                      Detail
+                      <ChevronRight size={13} />
+                    </Link>
+                  </span>
                 </footer>
               </article>
             )
           })}
         </div>
       )}
+
+      <FormUnit
+        terbuka={formUnit.terbuka}
+        unit={formUnit.unit}
+        onTutup={() => setFormUnit({ terbuka: false })}
+      />
+      {formTahap && <FormTahapUnit terbuka unit={formTahap} onTutup={() => setFormTahap(null)} />}
     </div>
   )
 }

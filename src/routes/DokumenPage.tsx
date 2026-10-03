@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, FileWarning, Search, X } from 'lucide-react'
+import { ChevronRight, FileWarning, FolderPen, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -11,10 +11,14 @@ import { Baris, Table, Td, Th, THead } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { STATUS_DOKUMEN, STATUS_UNIT } from '@/lib/status'
 import { rekapJenisDokumen, ringkasanDokumen, unitDokumenBermasalah } from '@/data/agregat'
+import { dataset } from '@/data'
 import { persen } from '@/lib/format'
+import { FormDokumen } from '@/components/app/FormDokumen'
+import type { VehicleDocuments } from '@/data/types'
 
 export function DokumenPage() {
   const [params, setParams] = useSearchParams()
+  const [formDok, setFormDok] = useState<VehicleDocuments | null>(null)
   const q = params.get('q') ?? ''
   const jenis = params.get('jenis') ?? 'SEMUA'
 
@@ -160,15 +164,18 @@ export function DokumenPage() {
                     <Td>
                       <span className="flex flex-wrap gap-1.5">
                         {x.bermasalah.map((b) => (
-                          <span
+                          <button
                             key={b.nama}
-                            className={`inline-flex items-center gap-1.5 rounded-pill px-2 py-0.5 text-2xs ${STATUS_DOKUMEN[b.status].halus}`}
-                            title={b.catatan}
+                            type="button"
+                            onClick={() => setFormDok(x.dokumen)}
+                            className={`inline-flex items-center gap-1.5 rounded-pill px-2 py-0.5 text-2xs hover:brightness-95 ${STATUS_DOKUMEN[b.status].halus}`}
+                            title={`${b.catatan} — klik untuk ubah statusnya`}
                           >
                             <FileWarning size={11} />
                             {b.nama} · {STATUS_DOKUMEN[b.status].label}
-                          </span>
+                          </button>
                         ))}
+                        {x.bermasalah.length === 0 && <span className="text-2xs text-ink-3">Semua dokumen tersedia</span>}
                       </span>
                     </Td>
                     <Td align="right" className="hidden md:table-cell">
@@ -177,13 +184,24 @@ export function DokumenPage() {
                     </Td>
                     <Td className="hidden lg:table-cell"><span className="text-2xs text-ink-2">{x.unit.salesPIC}</span></Td>
                     <Td align="right">
-                      <Link
-                        to={`/inventory/${x.unit.id}?tab=dokumen`}
-                        aria-label={`Buka detail ${x.unit.id}`}
-                        className="inline-flex text-ink-3 hover:text-accent"
-                      >
-                        <ChevronRight size={15} />
-                      </Link>
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormDok(x.dokumen)}
+                          aria-label={`Kelola dokumen ${x.unit.id}`}
+                          title="Kelola kelengkapan dokumen"
+                          className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                        >
+                          <FolderPen size={14} />
+                        </button>
+                        <Link
+                          to={`/inventory/${x.unit.id}?tab=dokumen`}
+                          aria-label={`Buka detail ${x.unit.id}`}
+                          className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                        >
+                          <ChevronRight size={15} />
+                        </Link>
+                      </span>
                     </Td>
                   </Baris>
                 ))}
@@ -231,6 +249,18 @@ export function DokumenPage() {
           </Panel>
         </div>
       </div>
+
+      {formDok && (
+        <FormDokumen
+          terbuka
+          dokumen={formDok}
+          label={(() => {
+            const u = dataset.vehicles.find((v) => v.id === formDok.vehicleId)
+            return u ? `${u.brand} ${u.model} ${u.tahun}` : formDok.vehicleId
+          })()}
+          onTutup={() => setFormDok(null)}
+        />
+      )}
     </div>
   )
 }

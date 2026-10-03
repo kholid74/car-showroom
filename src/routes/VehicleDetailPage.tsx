@@ -1,8 +1,8 @@
-import { type ReactNode, useRef } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, Banknote, CalendarClock, ChevronRight, ClipboardCheck, FileText, Handshake,
-  Info, MessageSquare, PackageCheck, Receipt, Tag, UserRound, Wallet, Wrench,
+  ArrowLeft, ArrowRightCircle, Banknote, CalendarClock, ChevronRight, ClipboardCheck, FileText, Handshake,
+  Info, MessageSquare, PackageCheck, Pencil, Receipt, Tag, UserRound, Wallet, Wrench,
 } from 'lucide-react'
 import { Panel, Baris as BarisKV } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
@@ -16,6 +16,10 @@ import {
 } from '@/lib/status'
 import { bundelUnit, customerById, unitTersedia } from '@/data/selectors'
 import { DEMO_TODAY } from '@/data'
+import { TAHAP_UNIT_BERIKUTNYA } from '@/store/sesi'
+import { FormUnit } from '@/components/app/FormUnit'
+import { FormTahapUnit } from '@/components/app/FormTahapUnit'
+import { FormPenjualan } from '@/components/app/FormPenjualan'
 import { angka, kilometer, persen, rupiahRingkas, tanggalPanjang, tanggalPendek, jarakHari, jam } from '@/lib/format'
 import type {
   Activity, Booking, Inspection, Interaksi, Lead, Procurement, Reconditioning, Sale, Vehicle, VehicleDocuments,
@@ -32,6 +36,9 @@ interface Tab {
 export function VehicleDetailPage() {
   const { id = '' } = useParams()
   const [params, setParams] = useSearchParams()
+  const [formUnit, setFormUnit] = useState(false)
+  const [formTahap, setFormTahap] = useState(false)
+  const [formJual, setFormJual] = useState(false)
   const bundel = bundelUnit(id)
 
   if (!bundel) return <UnitTidakDitemukan id={id} />
@@ -82,6 +89,21 @@ export function VehicleDetailPage() {
               {unit.brand} {unit.model} {unit.variant}
             </h2>
             <StatusPill label={STATUS_UNIT[unit.status].label} pil={STATUS_UNIT[unit.status].pil} />
+            <span className="ml-1 inline-flex flex-wrap items-center gap-1.5">
+              <Button variant="secondary" size="sm" ikon={<Pencil size={13} />} onClick={() => setFormUnit(true)}>
+                Ubah data
+              </Button>
+              {TAHAP_UNIT_BERIKUTNYA[unit.status] && (
+                <Button variant="secondary" size="sm" ikon={<ArrowRightCircle size={13} />} onClick={() => setFormTahap(true)}>
+                  Ubah tahap
+                </Button>
+              )}
+              {(unit.status === 'READY' || unit.status === 'BOOKED') && (
+                <Button variant="primary" size="sm" ikon={<Receipt size={13} />} onClick={() => setFormJual(true)}>
+                  Catat penjualan
+                </Button>
+              )}
+            </span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-ink-3">
             <IdChip nilai={unit.id} tebal />
@@ -127,6 +149,10 @@ export function VehicleDetailPage() {
         {/* ---------------- Money rail ---------------- */}
         <RelModal unit={unit} penjualan={penjualan} aktivitas={aktivitas} pilihTab={pilihTab} />
       </div>
+
+      <FormUnit terbuka={formUnit} unit={unit} onTutup={() => setFormUnit(false)} />
+      {formTahap && <FormTahapUnit terbuka unit={unit} onTutup={() => setFormTahap(false)} />}
+      {formJual && <FormPenjualan terbuka unit={unit} booking={booking} onTutup={() => setFormJual(false)} />}
     </div>
   )
 }
