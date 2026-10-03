@@ -1,0 +1,90 @@
+/*  Token sistem — Arah A "Meja Kerja" (terkunci F0)
+ *  Referensi : Mercury (kanvas dingin nyaris-putih, pemisah hairline, angka uang besar)
+ *              + vAuto (pil status radius 999px, radius 4px untuk kontrol padat)
+ *  Catatan   : setiap warna di bawah sudah dihitung kontrasnya (scripts/tokens.py).
+ *              Aturan peran token: aksen hanya untuk aksi primer / nav aktif / focus;
+ *              ungu (booked) hanya status BOOKED; warna tidak pernah dekoratif.
+ */
+@theme {
+  /* ---- permukaan ---- */
+  --color-canvas: oklch(97.9% 0.003 264.5);        /* #F7F8FA latar aplikasi */
+  --color-panel: oklch(100% 0 89.9);               /* #FFFFFF permukaan tabel/kartu */
+  --color-sunken: oklch(96% 0.005 247.9);          /* #EFF2F5 header tabel, input, baris terpilih */
+  --color-sunken-2: oklch(93.8% 0.007 247.9);      /* #E7EBEF hover baris */
+  --color-hairline: oklch(92.3% 0.008 253.9);      /* #E2E6EB pemisah 1px */
+  --color-hairline-strong: oklch(87.3% 0.012 248); /* #CFD6DD batas kolom tegas */
+
+  /* ---- teks (3 tingkat, semua lolos AA) ---- */
+  --color-ink: oklch(20.8% 0.011 260.7);           /* #15181D 16.7:1 */
+  --color-ink-2: oklch(44.3% 0.019 254);           /* #4C545E 7.2:1 */
+  --color-ink-3: oklch(52.4% 0.021 253.5);         /* #626B76 5.1:1 di kanvas, 4.5:1 di sunken-2 */
+
+  /* ---- aksen (peran ketat) ---- */
+  --color-accent: oklch(41.3% 0.097 245.3);        /* #0E4F7C aksi primer, nav aktif, focus */
+  --color-accent-hover: oklch(34.9% 0.082 246.1);  /* #0A3D62 */
+  --color-accent-soft: oklch(95.1% 0.012 239.9);   /* #E8F0F6 latar nav aktif / chip aksen */
+
+  /* ---- sinyal semantik uang ---- */
+  --color-money-pos: oklch(43.1% 0.092 160.9);     /* #0B5F3F margin positif */
+  --color-attention: oklch(53.1% 0.118 64.4);      /* #9A5B06 perhatian / follow-up jatuh tempo */
+  --color-danger: oklch(50.1% 0.178 28.7);         /* #B3261E repair required / selisih */
+
+  /* ---- status unit (warna = makna) ---- */
+  --color-st-baru: oklch(50.5% 0.023 250.6);       /* BARU MASUK */
+  --color-st-inspeksi: oklch(50.2% 0.092 226.1);   /* INSPEKSI */
+  --color-st-recon: oklch(53.1% 0.118 64.4);       /* RECONDITIONING */
+  --color-st-ready: oklch(51.4% 0.117 153.6);      /* READY */
+  --color-st-booked: oklch(48.3% 0.155 311.1);     /* BOOKED — ungu hanya untuk status ini */
+  --color-st-sold: oklch(38.5% 0.024 248.4);       /* SOLD */
+
+  /* ---- permukaan katalog publik (serapan terbatas Arah B) ---- */
+  --color-pub-canvas: oklch(100% 0 89.9);
+  --color-pub-panel: oklch(96.8% 0.005 78.3);
+  --color-pub-chrome: oklch(20.5% 0.01 268.2);
+  --color-pub-accent: oklch(55.3% 0.184 28.6);     /* CTA "Hubungi via WhatsApp" */
+
+  /* ---- tipografi: satu superfamily, delapan ukuran ---- */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --text-2xs: 0.6875rem;  /* 11px — label caps, metadata tabel */
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.8125rem;   /* 13px — isi tabel, teks padat */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.875rem;    /* 14px — kontrol, paragraf pendek */
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;      /* 16px */
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.1875rem;   /* 19px — judul panel */
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.4375rem;   /* 23px — judul halaman */
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.75rem;    /* 28px — KPI besar */
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2.0625rem;  /* 33px — angka utama dashboard */
+  --text-3xl--line-height: 2.375rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.015em;
+  --tracking-caps: 0.08em;   /* wajib untuk teks ALL CAPS */
+
+  /* ---- radius: kontrol presisi vs pil status ---- */
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --radius-pill: 999px;
+
+  /* ---- kedalaman: hairline sebagai default, shadow hanya untuk lapisan terapung ---- */
+  --shadow-popover: 0 1px 2px oklch(20.8% 0.011 260.7 / 0.06), 0 8px 24px oklch(20.8% 0.011 260.7 / 0.10);
+  --shadow-drawer: -1px 0 0 var(--color-hairline), -12px 0 32px oklch(20.8% 0.011 260.7 / 0.08);
+
+  /* ---- gerak ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+}
