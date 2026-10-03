@@ -119,7 +119,7 @@ const cocokRute = (href) => {
       ),
       tautan: await page.evaluate(() => [...document.querySelectorAll('main a[href]')].map((a) => a.getAttribute('href'))),
       kontrol: await page.evaluate(() =>
-        [...document.querySelectorAll('main input, main select, main textarea')].map((el) => ({
+        [...document.querySelectorAll('input, select, textarea')].map((el) => ({
           tag: el.tagName.toLowerCase(),
           nama: el.getAttribute('aria-label') || el.getAttribute('aria-labelledby') || '',
           adaLabel: Boolean(el.closest('label')?.innerText?.trim()) || Boolean(el.id && document.querySelector(`label[for="${el.id}"]`)),
@@ -127,7 +127,7 @@ const cocokRute = (href) => {
         })),
       ),
       tombol: await page.evaluate(() =>
-        [...document.querySelectorAll('main button, main a')].map((el) => ({
+        [...document.querySelectorAll('button, a')].map((el) => ({
           teks: (el.innerText || '').trim(),
           aria: (el.getAttribute('aria-label') || '').trim(),
           judul: (el.getAttribute('title') || '').trim(),
@@ -235,7 +235,72 @@ const cocokRute = (href) => {
     }
   }
 
-  // ---------- 4. penyapuan lebar layar ----------
+  // ---------- 5. navigasi harus benar-benar terjangkau di layar sempit ----------
+  // Ini kelas cacat yang tidak terlihat oleh pemeriksaan overflow: dulu di ponsel sidebar
+  // `hidden md:flex` menyembunyikan seluruh menu dan tidak ada tombol untuk membukanya,
+  // sehingga aplikasi praktis tidak bisa dipakai — tapi tidak ada satu pun pemeriksaan
+  // yang gagal, karena halamannya tetap "rapi".
+  for (const peran of Object.keys(HAK)) {
+    await pemilihPeran.selectOption(peran)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(450)
+    const menuHarus = MENU[peran]
+    const nama = `navigasi 375px (${peran})`
+
+    const asideTampil = await page.evaluate(() => {
+      const a = document.querySelector('aside')
+      return a ? getComputedStyle(a).display !== 'none' : false
+    })
+    jumlah.periksa += 4
+    catat(!asideTampil, `${nama}: sidebar tetap tampil dan memakan lebar di layar sempit`)
+
+    const tombolMenu = page.getByRole('button', { name: 'Buka menu navigasi' })
+    catat((await tombolMenu.count()) === 1, `${nama}: tidak ada tombol untuk membuka menu`)
+    await tombolMenu.click()
+    await page.waitForTimeout(400)
+
+    const tautanLaci = await page.evaluate(() =>
+      [...document.querySelectorAll('div[role="dialog"] nav a')].map((a) => a.innerText.trim()),
+    )
+    const kurang = menuHarus.filter((m) => !tautanLaci.includes(m))
+    catat(kurang.length === 0, `${nama}: menu tidak lengkap di laci, kurang: ${kurang.join(', ')}`)
+    catat(tautanLaci.length === menuHarus.length, `${nama}: laci memuat ${tautanLaci.length} menu, seharusnya ${menuHarus.length}`)
+
+    // memilih menu harus berpindah halaman sekaligus menutup laci
+    const tujuan = tautanLaci.includes('Inventory') ? 'Inventory' : tautanLaci[0]
+    await page.locator('div[role="dialog"] nav a', { hasText: tujuan }).first().click()
+    await page.waitForTimeout(500)
+    const masihTerbuka = (await page.locator('div[role="dialog"]').count()) > 0
+    catat(!masihTerbuka, `${nama}: laci tidak menutup setelah memilih menu`)
+    catat(!page.url().endsWith('/') || tujuan === 'Dashboard', `${nama}: memilih "${tujuan}" tidak berpindah halaman`)
+
+    // Esc juga harus menutup laci
+    await tombolMenu.click()
+    await page.waitForTimeout(350)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(350)
+    catat((await page.locator('div[role="dialog"]').count()) === 0, `${nama}: Esc tidak menutup laci menu`)
+  }
+
+  // di layar lebar, tombol menu harus hilang supaya tidak jadi kontrol mati
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(400)
+  jumlah.periksa += 2
+  catat(
+    (await page.getByRole('button', { name: 'Buka menu navigasi' }).count()) === 0,
+    'di 1440px tombol menu masih tampil (kontrol mati)',
+  )
+  catat(
+    await page.evaluate(() => {
+      const a = document.querySelector('aside')
+      return Boolean(a && getComputedStyle(a).display !== 'none')
+    }),
+    'di 1440px sidebar justru tidak tampil',
+  )
+
+  // ---------- 6. penyapuan lebar layar ----------
   await pemilihPeran.selectOption('OWNER')
   await page.waitForTimeout(250)
   for (const [lebar, tinggi] of [[1440, 900], [768, 1024], [375, 812]]) {
