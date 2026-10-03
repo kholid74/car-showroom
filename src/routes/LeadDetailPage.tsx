@@ -269,7 +269,7 @@ export function LeadDetailPage() {
         </aside>
       </div>
 
-      <FormLead terbuka={formUbah} lead={lead} onTutup={() => setFormUbah(false)} />
+      {formUbah && <FormLead terbuka lead={lead} onTutup={() => setFormUbah(false)} />}
     </div>
   )
 }

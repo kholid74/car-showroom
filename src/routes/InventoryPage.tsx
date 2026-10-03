@@ -423,11 +423,9 @@ export function InventoryPage() {
         </div>
       )}
 
-      <FormUnit
-        terbuka={formUnit.terbuka}
-        unit={formUnit.unit}
-        onTutup={() => setFormUnit({ terbuka: false })}
-      />
+      {formUnit.terbuka && (
+        <FormUnit terbuka unit={formUnit.unit} onTutup={() => setFormUnit({ terbuka: false })} />
+      )}
       {formTahap && <FormTahapUnit terbuka unit={formTahap} onTutup={() => setFormTahap(null)} />}
     </div>
   )

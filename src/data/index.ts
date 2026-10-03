@@ -1,4 +1,15 @@
-import type { Dataset, Lead, Procurement, Sale, Vehicle, VehicleDocuments } from './types'
+import type {
+  Booking,
+  Dataset,
+  Expense,
+  Inspection,
+  Lead,
+  Procurement,
+  Reconditioning,
+  Sale,
+  Vehicle,
+  VehicleDocuments,
+} from './types'
 import raw from './dataset.json'
 import { useSesi } from '@/store/sesi'
 import { DEMO_TODAY, bulanIni } from './meta'
@@ -10,7 +21,8 @@ import { selisihHari } from '@/lib/format'
  * `dataset` di bawah ini bukan salinan JSON apa adanya, melainkan tampilan **langsung**
  * (live view): data dasar dari scripts/generate-dataset.mjs digabung dengan apa pun yang
  * dibuat atau diubah pengunjung pada sesi ini — unit yang dimasukkan, data unit yang
- * diperbarui, dokumen yang diubah statusnya, lead baru, penjualan yang dicatat.
+ * diperbarui, dokumen yang diubah statusnya, lead baru, penjualan yang dicatat,
+ * biaya, booking, pekerjaan reconditioning, dan hasil inspeksi.
  *
  * Kenapa getter, bukan salinan: supaya SETIAP modul (dashboard, finance, laporan, aging)
  * otomatis melihat angka yang sama begitu ada data baru, tanpa perlu tiap halaman
@@ -40,14 +52,38 @@ function memo<T>(hitung: () => T): () => T {
 
 const ada = (o: Record<string, unknown> | undefined) => Boolean(o && Object.keys(o).length)
 
+/** Biaya pekerjaan reconditioning yang ditambahkan pengunjung, dipetakan ke unitnya. */
+const tambahanRecon = memo<Record<string, number>>(() => {
+  const baru = sesi.reconItemBaru ?? {}
+  if (!ada(baru)) return {}
+  const peta: Record<string, number> = {}
+  for (const [reconId, items] of Object.entries(baru)) {
+    const rec = dasar.reconditionings.find((r) => r.id === reconId)
+    if (!rec) continue
+    peta[rec.vehicleId] = (peta[rec.vehicleId] ?? 0) + items.reduce((n, x) => n + x.biaya, 0)
+  }
+  return peta
+})
+
 const kendaraan = memo<Vehicle[]>(() => {
   const unitBaru = sesi.unitBaru ?? []
   const ubah = sesi.ubahUnit ?? {}
   const status = sesi.statusUnit ?? {}
-  if (!unitBaru.length && !ada(ubah) && !ada(status)) return dasar.vehicles
+  const reconTambahan = tambahanRecon()
+  if (!unitBaru.length && !ada(ubah) && !ada(status) && !ada(reconTambahan)) return dasar.vehicles
 
   return [...unitBaru, ...dasar.vehicles].map((v) => {
     let unit = ubah[v.id] ? { ...v, ...ubah[v.id] } : v
+    // modal selalu dihitung ulang dari komponennya, termasuk pekerjaan recon yang baru ditambahkan
+    const tambahan = reconTambahan[unit.id] ?? 0
+    const sentuhUang =
+      ubah[v.id] !== undefined &&
+      ['purchasePrice', 'reconCost', 'otherCost', 'listingPrice'].some((k) => k in ubah[v.id])
+    if (tambahan > 0 || sentuhUang) {
+      const reconCost = unit.reconCost + tambahan
+      const totalCost = unit.purchasePrice + reconCost + unit.otherCost
+      unit = { ...unit, reconCost, totalCost, estimasiMargin: unit.listingPrice - totalCost }
+    }
     const statusBaru = status[unit.id]
     if (statusBaru) {
       const siap = sesi.tanggalSiap?.[unit.id] ?? unit.tanggalSiap
@@ -85,11 +121,23 @@ const penjualan = memo<Sale[]>(() =>
   (sesi.penjualanBaru ?? []).length ? [...sesi.penjualanBaru, ...dasar.sales] : dasar.sales,
 )
 
-const pemesanan = memo(() =>
-  (sesi.bookingSelesai ?? []).length
-    ? dasar.bookings.map((b) => (sesi.bookingSelesai.includes(b.id) ? { ...b, statusPembayaran: 'SELESAI' } : b))
-    : dasar.bookings,
-)
+const pemesanan = memo<Booking[]>(() => {
+  const selesai = sesi.bookingSelesai ?? []
+  const ubah = sesi.ubahBooking ?? {}
+  const batal = sesi.bookingDibatalkan ?? []
+  const baru = sesi.bookingBaru ?? []
+  if (!selesai.length && !ada(ubah) && !batal.length && !baru.length) return dasar.bookings
+
+  const dasarDisesuaikan = dasar.bookings
+    .filter((b) => !batal.includes(b.id))
+    .map((b) => {
+      let hasil = ubah[b.id] ? { ...b, ...ubah[b.id] } : b
+      if (selesai.includes(hasil.id)) hasil = { ...hasil, statusPembayaran: 'SELESAI' }
+      return hasil
+    })
+  const tambahan = baru.filter((b) => !batal.includes(b.id)).map((b) => (ubah[b.id] ? { ...b, ...ubah[b.id] } : b))
+  return [...tambahan, ...dasarDisesuaikan]
+})
 
 const dokumen = memo<VehicleDocuments[]>(() => {
   const perubahan = sesi.ubahDokumen ?? {}
@@ -107,6 +155,49 @@ const dokumen = memo<VehicleDocuments[]>(() => {
     }
   })
   return [...baru, ...dasarDisesuaikan]
+})
+
+const perawatan = memo<Reconditioning[]>(() => {
+  const baru = sesi.reconItemBaru ?? {}
+  const ubah = sesi.ubahPekerjaan ?? {}
+  const selesai = sesi.reconSelesai ?? []
+  if (!ada(baru) && !ada(ubah) && !selesai.length) return dasar.reconditionings
+
+  return dasar.reconditionings.map((r) => {
+    const items = [...r.items, ...(baru[r.id] ?? [])].map((it) => {
+      const ubahan = ubah[`${r.id}::${it.id}`]
+      return ubahan ? { ...it, ...ubahan } : it
+    })
+    const tuntas = selesai.includes(r.id) || (items.length > 0 && items.every((it) => it.status === 'COMPLETED'))
+    return {
+      ...r,
+      items,
+      total: items.reduce((n, it) => n + it.biaya, 0),
+      status: tuntas ? ('COMPLETED' as const) : r.status,
+      selesai: tuntas ? (r.selesai ?? DEMO_TODAY) : r.selesai,
+    }
+  })
+})
+
+const inspeksi = memo<Inspection[]>(() => {
+  const baru = sesi.inspeksiBaru ?? []
+  if (!baru.length) return dasar.inspections
+  // inspeksi terbaru menggantikan inspeksi lama untuk unit yang sama — bukan menumpuk jadi dua baris
+  const unitDiinspeksi = new Set(baru.map((i) => i.vehicleId))
+  return [...baru, ...dasar.inspections.filter((i) => !unitDiinspeksi.has(i.vehicleId))]
+})
+
+const biaya = memo<Expense[]>(() => {
+  const baru = sesi.biayaBaru ?? []
+  const ubah = sesi.ubahBiaya ?? {}
+  const hapus = sesi.biayaDihapus ?? []
+  if (!baru.length && !ada(ubah) && !hapus.length) return dasar.expenses
+
+  const dasarDisesuaikan = dasar.expenses
+    .filter((e) => !hapus.includes(e.id))
+    .map((e) => (ubah[e.id] ? { ...e, ...ubah[e.id] } : e))
+  const tambahan = baru.filter((e) => !hapus.includes(e.id)).map((e) => (ubah[e.id] ? { ...e, ...ubah[e.id] } : e))
+  return [...tambahan, ...dasarDisesuaikan]
 })
 
 const pengadaan = memo<Procurement[]>(() =>
@@ -132,6 +223,15 @@ export const dataset: Dataset = {
   },
   get procurements() {
     return pengadaan()
+  },
+  get reconditionings() {
+    return perawatan()
+  },
+  get inspections() {
+    return inspeksi()
+  },
+  get expenses() {
+    return biaya()
   },
 }
 

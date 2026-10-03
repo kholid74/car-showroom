@@ -82,6 +82,20 @@ const angkaDari = (teks, label) => {
   const setelahTahap = await teksUtama(page)
   catat(setelahTahap.includes('Inspeksi') || setelahTahap.includes('INSPEKSI'), 'tahap unit berpindah ke Inspeksi')
 
+  // ---------- 2b. UBAH DATA UNIT (mode ubah wajib terisi data unit, bukan kosong) ----------
+  await page.locator('main table tbody tr', { hasText: 'Wuling' }).first()
+    .getByRole('button', { name: /^Ubah data/ }).click()
+  await page.waitForTimeout(500)
+  const dUbah = page.getByRole('dialog')
+  catat((await dUbah.getByLabel('Merek').inputValue()) === 'Wuling', 'mode ubah terisi data unit yang dipilih (bukan kosong)')
+  catat((await dUbah.getByLabel('Model').inputValue()) === 'Cortez', 'model unit ikut terisi di mode ubah')
+  const listingAwal = await dUbah.getByLabel('Harga listing (Rp)').inputValue()
+  await dUbah.getByLabel('Harga listing (Rp)').fill('260000000')
+  await dUbah.getByRole('button', { name: 'Simpan perubahan' }).click()
+  await page.waitForTimeout(800)
+  const isiUbah = await teksUtama(page)
+  catat(isiUbah.includes('260.000.000') || isiUbah.includes('Rp260'), `harga listing unit berubah dari ${listingAwal} setelah diubah`)
+
   // ---------- 3. CATAT PENJUALAN (dari unit siap, lintas modul) ----------
   await page.goto(BASE + '/penjualan', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(600)

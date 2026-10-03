@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, Search, X } from 'lucide-react'
+import { ChevronRight, Pencil, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -13,6 +13,8 @@ import { STATUS_UNIT } from '@/lib/status'
 import { dataset } from '@/data'
 import { kategoriTemuan, ringkasanInspeksi } from '@/data/agregat'
 import { angka, persen, tanggalPendek } from '@/lib/format'
+import { FormInspeksi } from '@/components/app/FormInspeksi'
+import type { Vehicle } from '@/data/types'
 
 export function InspeksiPage() {
   const [params, setParams] = useSearchParams()
@@ -26,6 +28,7 @@ export function InspeksiPage() {
     setParams(berikut, { replace: true })
   }
 
+  const [formInspeksi, setFormInspeksi] = useState<Vehicle | null>(null)
   const ringkas = useMemo(() => ringkasanInspeksi(), [])
   const kategori = useMemo(() => kategoriTemuan(), [])
   const daftarRekomendasi = useMemo(
@@ -90,6 +93,8 @@ export function InspeksiPage() {
             className="h-7 w-full rounded-control border border-hairline-strong bg-panel pl-7 pr-2 text-xs text-ink placeholder:text-ink-3 hover:bg-sunken focus-visible:bg-panel"
           />
         </label>
+
+        {formInspeksi && <FormInspeksi terbuka unit={formInspeksi} onTutup={() => setFormInspeksi(null)} />}
 
         <div className="flex flex-wrap items-center gap-1.5">
           <FilterChip aktif={rekomendasi === 'SEMUA'} onClick={() => atur('rekomendasi', 'SEMUA')} jumlah={ringkas.jumlah}>
@@ -177,6 +182,18 @@ export function InspeksiPage() {
                       <Td className="hidden lg:table-cell"><span className="text-2xs text-ink-2">{i.rekomendasi}</span></Td>
                       <Td align="right"><span className="text-2xs text-ink-2">{tanggalPendek(i.tanggal)}</span></Td>
                       <Td align="right">
+                        <span className="inline-flex items-center gap-1">
+                          {unit && (
+                            <button
+                              type="button"
+                              onClick={() => setFormInspeksi(unit)}
+                              aria-label={`Isi hasil inspeksi ${unit.id}`}
+                              title="Isi ulang hasil inspeksi unit ini"
+                              className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
                         <Link
                           to={`/inventory/${i.vehicleId}?tab=inspeksi`}
                           aria-label={`Buka detail ${i.vehicleId}`}
@@ -184,6 +201,7 @@ export function InspeksiPage() {
                         >
                           <ChevronRight size={15} />
                         </Link>
+                        </span>
                       </Td>
                     </Baris>
                   )

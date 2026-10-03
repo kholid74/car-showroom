@@ -152,7 +152,7 @@ export function CrmPage() {
         </div>
       </div>
 
-      <FormLead terbuka={formLead} onTutup={() => setFormLead(false)} />
+      {formLead && <FormLead terbuka onTutup={() => setFormLead(false)} />}
 
       {adaPerubahan && (
         <div className="flex flex-wrap items-center gap-2 rounded-panel border border-hairline bg-sunken px-3 py-2">

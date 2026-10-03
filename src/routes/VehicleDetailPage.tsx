@@ -150,7 +150,7 @@ export function VehicleDetailPage() {
         <RelModal unit={unit} penjualan={penjualan} aktivitas={aktivitas} pilihTab={pilihTab} />
       </div>
 
-      <FormUnit terbuka={formUnit} unit={unit} onTutup={() => setFormUnit(false)} />
+      {formUnit && <FormUnit terbuka unit={bundel.unit} onTutup={() => setFormUnit(false)} />}
       {formTahap && <FormTahapUnit terbuka unit={unit} onTutup={() => setFormTahap(false)} />}
       {formJual && <FormPenjualan terbuka unit={unit} booking={booking} onTutup={() => setFormJual(false)} />}
     </div>

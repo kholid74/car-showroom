@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { Pencil, Plus, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { SelRingkas, StripRingkas } from '@/components/ui/SelRingkas'
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button'
 import { dataset } from '@/data'
 import { biayaPerBulan, biayaPerKategori, ringkasanBiaya } from '@/data/agregat-keuangan'
 import { persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
+import { FormBiaya } from '@/components/app/FormBiaya'
+import type { Expense } from '@/data/types'
 
 export function BiayaPage() {
   const [params, setParams] = useSearchParams()
@@ -23,6 +25,7 @@ export function BiayaPage() {
     setParams(berikut, { replace: true })
   }
 
+  const [formBiaya, setFormBiaya] = useState<{ terbuka: boolean; biaya?: Expense }>({ terbuka: false })
   const ringkas = useMemo(() => ringkasanBiaya(), [])
   const perKategori = useMemo(() => biayaPerKategori(), [])
   const perBulan = useMemo(() => biayaPerBulan(), [])
@@ -100,6 +103,11 @@ export function BiayaPage() {
           />
         </label>
 
+        <Button variant="primary" size="sm" ikon={<Plus size={13} />} onClick={() => setFormBiaya({ terbuka: true })}>
+          Catat biaya
+        </Button>
+        {formBiaya.terbuka && <FormBiaya terbuka biaya={formBiaya.biaya} onTutup={() => setFormBiaya({ terbuka: false })} />}
+
         <div className="flex flex-wrap items-center gap-1.5">
           <FilterChip aktif={kategori === 'SEMUA'} onClick={() => atur('kategori', 'SEMUA')} jumlah={ringkas.jumlah}>
             Semua kategori
@@ -142,6 +150,7 @@ export function BiayaPage() {
                 <Th className="hidden xl:table-cell" lebar={140}>Metode</Th>
                 <Th className="hidden xl:table-cell" lebar={130}>PIC</Th>
                 <Th align="right" lebar={140}>Jumlah</Th>
+                <Th align="right" lebar={44} />
               </THead>
               <tbody>
                 {terfilter.map((e) => (
@@ -160,6 +169,17 @@ export function BiayaPage() {
                     <Td className="hidden xl:table-cell"><span className="text-2xs text-ink-2">{e.metode}</span></Td>
                     <Td className="hidden xl:table-cell"><span className="text-2xs text-ink-2">{e.pic}</span></Td>
                     <Td align="right"><Money nilai={e.jumlah} ukuran="sm" /></Td>
+                    <Td align="right">
+                      <button
+                        type="button"
+                        onClick={() => setFormBiaya({ terbuka: true, biaya: e })}
+                        aria-label={`Ubah biaya ${e.id}`}
+                        title="Ubah atau hapus biaya ini"
+                        className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </Td>
                   </Baris>
                 ))}
               </tbody>
@@ -172,6 +192,7 @@ export function BiayaPage() {
                   <Td className="hidden xl:table-cell" />
                   <Td className="hidden xl:table-cell" />
                   <Td align="right" tebal><Money nilai={totalTerfilter} ukuran="sm" nada="kuat" /></Td>
+                  <Td />
                 </tr>
               </tfoot>
             </Table>

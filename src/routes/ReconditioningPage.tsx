@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, Search, Wrench, X } from 'lucide-react'
+import { Check, ChevronRight, Search, Wrench, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -13,6 +13,8 @@ import { STATUS_RECON, STATUS_UNIT } from '@/lib/status'
 import { dataset } from '@/data'
 import { biayaPerVendor, pekerjaanBerjalan, ringkasanReconditioning } from '@/data/agregat'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
+import { FormPekerjaanRecon } from '@/components/app/FormPekerjaanRecon'
+import { useSesi } from '@/store/sesi'
 import { DEMO_TODAY } from '@/data'
 import type { UnitStatus } from '@/data/types'
 
@@ -36,6 +38,8 @@ export function ReconditioningPage() {
     setParams(berikut, { replace: true })
   }
 
+  const [formPekerjaan, setFormPekerjaan] = useState<{ reconId: string; label: string } | null>(null)
+  const selesaikanRecon = useSesi((s) => s.selesaikanRecon)
   const ringkas = useMemo(() => ringkasanReconditioning(), [])
   const vendor = useMemo(() => biayaPerVendor(), [])
   const berjalan = useMemo(() => pekerjaanBerjalan(), [])
@@ -102,6 +106,15 @@ export function ReconditioningPage() {
             className="h-7 w-full rounded-control border border-hairline-strong bg-panel pl-7 pr-2 text-xs text-ink placeholder:text-ink-3 hover:bg-sunken focus-visible:bg-panel"
           />
         </label>
+
+        {formPekerjaan && (
+          <FormPekerjaanRecon
+            terbuka
+            reconId={formPekerjaan.reconId}
+            label={formPekerjaan.label}
+            onTutup={() => setFormPekerjaan(null)}
+          />
+        )}
 
         <div className="flex flex-wrap items-center gap-1.5">
           {FILTER_STATUS.map((f) => (
@@ -201,13 +214,42 @@ export function ReconditioningPage() {
                       </Td>
                       <Td align="right"><Money nilai={r.total} ukuran="sm" nada="kuat" /></Td>
                       <Td align="right">
-                        <Link
-                          to={`/inventory/${r.vehicleId}?tab=reconditioning`}
-                          aria-label={`Buka detail ${r.vehicleId}`}
-                          className="inline-flex text-ink-3 hover:text-accent"
-                        >
-                          <ChevronRight size={15} />
-                        </Link>
+                        <span className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormPekerjaan({
+                                reconId: r.id,
+                                label: unit ? `${unit.brand} ${unit.model} ${unit.tahun}` : r.vehicleId,
+                              })
+                            }
+                            aria-label={`Tambah pekerjaan ${r.id}`}
+                            title="Tambah pekerjaan reconditioning"
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <Wrench size={14} />
+                          </button>
+                          {r.status !== 'COMPLETED' && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                selesaikanRecon(r.id, unit ? `${unit.brand} ${unit.model} ${unit.tahun}` : r.vehicleId)
+                              }
+                              aria-label={`Tandai selesai ${r.id}`}
+                              title="Tandai reconditioning selesai"
+                              className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-money-pos"
+                            >
+                              <Check size={14} />
+                            </button>
+                          )}
+                          <Link
+                            to={`/inventory/${r.vehicleId}?tab=reconditioning`}
+                            aria-label={`Buka detail ${r.vehicleId}`}
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <ChevronRight size={15} />
+                          </Link>
+                        </span>
                       </Td>
                     </Baris>
                   )

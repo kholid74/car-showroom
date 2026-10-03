@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarClock, ChevronRight, Receipt, Search, X } from 'lucide-react'
+import { CalendarClock, ChevronRight, Pencil, Plus, Receipt, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -14,6 +14,7 @@ import { dataset, DEMO_TODAY } from '@/data'
 import { ringkasanBooking } from '@/data/agregat-keuangan'
 import type { Booking, Vehicle } from '@/data/types'
 import { FormPenjualan } from '@/components/app/FormPenjualan'
+import { FormBooking } from '@/components/app/FormBooking'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 
 export function BookingPage() {
@@ -30,6 +31,7 @@ export function BookingPage() {
 
   const ringkas = useMemo(() => ringkasanBooking(), [])
   const [formJual, setFormJual] = useState<{ unit: Vehicle; booking: Booking } | null>(null)
+  const [formBooking, setFormBooking] = useState<{ terbuka: boolean; booking?: Booking }>({ terbuka: false })
   const daftarStatus = useMemo(() => [...new Set(dataset.bookings.map((b) => b.statusPembayaran))], [])
 
   const semua = useMemo(
@@ -106,6 +108,12 @@ export function BookingPage() {
             className="h-7 w-full rounded-control border border-hairline-strong bg-panel pl-7 pr-2 text-xs text-ink placeholder:text-ink-3 hover:bg-sunken focus-visible:bg-panel"
           />
         </label>
+
+        <Button variant="primary" size="sm" ikon={<Plus size={13} />} onClick={() => setFormBooking({ terbuka: true })}>
+          Buat booking
+        </Button>
+
+        {formBooking.terbuka && <FormBooking terbuka booking={formBooking.booking} onTutup={() => setFormBooking({ terbuka: false })} />}
 
         <div className="flex flex-wrap items-center gap-1.5">
           <FilterChip aktif={status === 'SEMUA'} onClick={() => atur('status', 'SEMUA')} jumlah={ringkas.total}>
@@ -236,6 +244,15 @@ export function BookingPage() {
                       </Td>
                       <Td align="right">
                         <span className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setFormBooking({ terbuka: true, booking: b })}
+                            aria-label={`Ubah DP booking ${b.id}`}
+                            title="Ubah DP atau batalkan booking ini"
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <Pencil size={14} />
+                          </button>
                           {aktif && unit && (
                             <button
                               type="button"

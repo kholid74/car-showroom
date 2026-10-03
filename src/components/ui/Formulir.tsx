@@ -60,9 +60,10 @@ export function BadanDialog({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-3 px-4 py-4">{children}</div>
 }
 
-export function AksiDialog({ children }: { children: ReactNode }) {
+export function AksiDialog({ children, kiri }: { children: ReactNode; kiri?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-hairline bg-sunken px-4 py-3">
+      {kiri && <div className="mr-auto flex flex-wrap items-center gap-2">{kiri}</div>}
       {children}
     </div>
   )
