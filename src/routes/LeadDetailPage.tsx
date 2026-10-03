@@ -20,7 +20,7 @@ export function LeadDetailPage() {
   if (!lead) {
     return (
       <Panel>
-        <h1 className="text-xs font-semibold text-ink">Lead {leadId} tidak ditemukan</h1>
+        <h2 className="text-xs font-semibold text-ink">Lead {leadId} tidak ditemukan</h2>
         <p className="mt-1 text-xs text-ink-2">
           Lead pada demo ini bernomor <span className="id-chip">LD-1001</span> sampai{' '}
           <span className="id-chip">LD-1039</span>.
@@ -49,7 +49,7 @@ export function LeadDetailPage() {
             Kembali ke CRM
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight text-ink">{lead.nama}</h1>
+            <h2 className="text-lg font-semibold tracking-tight text-ink">{lead.nama}</h2>
             <StatusPill label={STATUS_LEAD[tahap].label} pil={STATUS_LEAD[tahap].halus} dot={STATUS_LEAD[tahap].dot} />
             {perubahan[lead.id] && (
               <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-2xs text-accent">

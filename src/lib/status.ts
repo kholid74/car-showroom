@@ -54,8 +54,7 @@ export const STATUS_PEMBAYARAN: Record<string, { label: string; halus: string; d
   'DIBAYAR SEBAGIAN': { label: 'Dibayar Sebagian', halus: 'bg-attention/10 text-attention', dot: 'bg-attention' },
   'DP DIBAYAR': { label: 'DP Dibayar', halus: 'bg-st-inspeksi/10 text-st-inspeksi', dot: 'bg-st-inspeksi' },
   'MENUNGGU PEMBAYARAN': { label: 'Menunggu Pembayaran', halus: 'bg-st-baru/10 text-st-baru', dot: 'bg-st-baru' },
-  'MENUNGGU DOKUMEN': { label: 'Menunggu Dokumen', halus: 'bg-attention/10 text-attention', dot: 'bg-attention' },
-  'MENUNGGU DOKUMEN ': { label: 'Menunggu Dokumen', halus: 'bg-attention/10 text-attention', dot: 'bg-attention' },
+  SELESAI: { label: 'Selesai (jadi penjualan)', halus: 'bg-money-pos/10 text-money-pos', dot: 'bg-money-pos' },
 }
 
 /** Keterangan umur stok — dipakai di tabel inventory */

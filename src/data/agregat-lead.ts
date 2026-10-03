@@ -1,20 +1,28 @@
 import { dataset, DEMO_TODAY } from './index'
 import type { Lead, LeadStatus } from './types'
 
+/**
+ * Lead yang dipakai seluruh agregasi = lead hasil katalog publik (masuk saat sesi berjalan)
+ * digabung dengan lead di dataset. Tanpa ini, angka CRM tidak akan cocok dengan isi papannya
+ * begitu ada minat baru dari katalog.
+ */
+const semuaLead = (ekstra: Lead[] = []) => (ekstra.length ? [...ekstra, ...dataset.leads] : dataset.leads)
+
 /** Ringkasan pipeline lead — dipakai dashboard, CRM, dan laporan. */
-export function ringkasanLead() {
-  const aktif = dataset.leads.filter((l) => !['WON', 'LOST'].includes(l.status))
-  const menang = dataset.leads.filter((l) => l.status === 'WON')
+export function ringkasanLead(ekstra: Lead[] = []) {
+  const semua = semuaLead(ekstra)
+  const aktif = semua.filter((l) => !['WON', 'LOST'].includes(l.status))
+  const menang = semua.filter((l) => l.status === 'WON')
   const jatuhTempo = aktif.filter((l) => l.nextFollowUp && l.nextFollowUp <= DEMO_TODAY)
   const tanpaJadwal = aktif.filter((l) => !l.nextFollowUp)
   return {
-    total: dataset.leads.length,
+    total: semua.length,
     aktif: aktif.length,
     nilaiPipeline: aktif.reduce((s, l) => s + l.budget, 0),
     menang: menang.length,
     nilaiMenang: menang.reduce((s, l) => s + l.budget, 0),
-    batal: dataset.leads.filter((l) => l.status === 'LOST').length,
-    konversi: dataset.leads.length ? menang.length / dataset.leads.length : 0,
+    batal: semua.filter((l) => l.status === 'LOST').length,
+    konversi: semua.length ? menang.length / semua.length : 0,
     jatuhTempo: jatuhTempo.length,
     tanpaJadwal: tanpaJadwal.length,
     rataBudget: aktif.length ? aktif.reduce((s, l) => s + l.budget, 0) / aktif.length : 0,
@@ -22,18 +30,20 @@ export function ringkasanLead() {
 }
 
 /** Jumlah dan nilai lead per tahap (memakai tahap apa adanya dari data demo). */
-export function leadPerTahap(tahap: LeadStatus[]) {
+export function leadPerTahap(tahap: LeadStatus[], ekstra: Lead[] = []) {
+  const semua = semuaLead(ekstra)
   return tahap.map((t) => {
-    const daftar = dataset.leads.filter((l) => l.status === t)
+    const daftar = semua.filter((l) => l.status === t)
     return { tahap: t, daftar, jumlah: daftar.length, nilai: daftar.reduce((s, l) => s + l.budget, 0) }
   })
 }
 
 /** Efektivitas sumber lead: mana yang menghasilkan closing, bukan sekadar banyak lead. */
-export function leadPerSumber() {
+export function leadPerSumber(ekstra: Lead[] = []) {
+  const semua = semuaLead(ekstra)
   return dataset.sumberLeadMaster
     .map((sumber) => {
-      const daftar = dataset.leads.filter((l) => l.sumber === sumber)
+      const daftar = semua.filter((l) => l.sumber === sumber)
       const menang = daftar.filter((l) => l.status === 'WON')
       return {
         sumber,
@@ -48,9 +58,10 @@ export function leadPerSumber() {
 }
 
 /** Beban kerja per sales: lead aktif dan yang sudah jatuh tempo. */
-export function bebanSales() {
+export function bebanSales(ekstra: Lead[] = []) {
+  const semua = semuaLead(ekstra)
   return dataset.salesTeam.map((s) => {
-    const lead = dataset.leads.filter((l) => l.salesPIC === s.nama)
+    const lead = semua.filter((l) => l.salesPIC === s.nama)
     const aktif = lead.filter((l) => !['WON', 'LOST'].includes(l.status))
     return {
       sales: s.nama,
@@ -63,8 +74,8 @@ export function bebanSales() {
 }
 
 /** Lead yang perlu ditindak hari ini, terurut dari yang paling terlambat. */
-export function leadJatuhTempo(): Lead[] {
-  return dataset.leads
+export function leadJatuhTempo(ekstra: Lead[] = []): Lead[] {
+  return semuaLead(ekstra)
     .filter((l) => !['WON', 'LOST'].includes(l.status) && l.nextFollowUp && l.nextFollowUp <= DEMO_TODAY)
     .sort((a, b) => (a.nextFollowUp! < b.nextFollowUp! ? -1 : 1))
 }

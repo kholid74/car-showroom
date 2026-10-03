@@ -17,7 +17,7 @@ export function CustomerDetailPage() {
   if (!bundel) {
     return (
       <Panel>
-        <h1 className="text-xs font-semibold text-ink">Customer {customerId} tidak ditemukan</h1>
+        <h2 className="text-xs font-semibold text-ink">Customer {customerId} tidak ditemukan</h2>
         <p className="mt-1 text-xs text-ink-2">
           Customer pada demo ini bernomor <span className="id-chip">CST-001</span> sampai{' '}
           <span className="id-chip">CST-022</span>.
@@ -47,7 +47,7 @@ export function CustomerDetailPage() {
           Kembali ke daftar customer
         </Link>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-semibold tracking-tight text-ink">{customer.nama}</h1>
+          <h2 className="text-lg font-semibold tracking-tight text-ink">{customer.nama}</h2>
           <IdChip nilai={customer.id} tebal />
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-ink-3">

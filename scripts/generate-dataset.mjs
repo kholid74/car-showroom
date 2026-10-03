@@ -94,10 +94,10 @@ const KOTA = ['Jakarta Selatan', 'Jakarta Timur', 'Depok', 'Bekasi', 'Tangerang 
 const CABANG = ['Jakarta Selatan', 'Bekasi']
 const PLAT = { 'Jakarta Selatan': 'B', 'Bekasi': 'B' }
 const SALES = [
-  { id: 'SLS-01', nama: 'Andi Pratama', jabatan: 'Sales Executive', target: 12 },
-  { id: 'SLS-02', nama: 'Rizky Nugroho', jabatan: 'Sales Executive', target: 10 },
-  { id: 'SLS-03', nama: 'Dimas Saputra', jabatan: 'Sales Executive', target: 9 },
-  { id: 'SLS-04', nama: 'Bagus Wicaksono', jabatan: 'Sales Executive', target: 8 },
+  { id: 'SLS-01', nama: 'Andi Pratama', jabatan: 'Sales Executive' },
+  { id: 'SLS-02', nama: 'Rizky Nugroho', jabatan: 'Sales Executive' },
+  { id: 'SLS-03', nama: 'Dimas Saputra', jabatan: 'Sales Executive' },
+  { id: 'SLS-04', nama: 'Bagus Wicaksono', jabatan: 'Sales Executive' },
 ]
 const VENDOR_RECON = ['Bengkel Sentra Motor', 'Auto Detailing Prima', 'Karya Mandiri Body Repair', 'Klinik AC Mobil Sejuk', 'Ban & Velg Jaya Abadi', 'Bengkel Spesialis Otomotif DS']
 const FINANCE = ['Adira Finance', 'BCA Finance', 'Mandiri Tunas Finance', 'Astra Credit Companies', 'Maybank Finance', 'BNI Multifinance']
@@ -129,7 +129,6 @@ const plat = (cabang) => {
 }
 const vin = (i) => `MHFD3B${String(ri(10, 99))}0N${String(100000 + i * 7).slice(0, 6)}`
 const noMesin = (i) => `2GD-FTV-${100000 + i * 137}`
-const noRangka = (i) => `RANGKA-DEMO-${String(1000 + i)}`
 
 // ---------- unit ----------
 const TOTAL_UNIT = 44
@@ -141,6 +140,10 @@ const STATUS_PLAN = [
   ...Array(5).fill('INSPEKSI'),
   ...Array(4).fill('BARU MASUK'),
 ]
+// rencana status harus mencakup tepat semua unit — dulu konstanta ini tidak dipakai sama sekali
+if (STATUS_PLAN.length !== TOTAL_UNIT) {
+  throw new Error(`rencana status ${STATUS_PLAN.length} unit, seharusnya ${TOTAL_UNIT}`)
+}
 
 const KATEGORI_INSPEKSI = [
   { kategori: 'Eksterior', item: ['Body & cat', 'Bumper depan', 'Bumper belakang', 'Pintu & kap mesin', 'Kaca & wiper', 'Lampu eksterior'] },
@@ -297,11 +300,18 @@ STATUS_PLAN.forEach((status, idx) => {
     const sections = KATEGORI_INSPEKSI.map((s, si) => ({
       kategori: s.kategori,
       item: s.item.map((it) => {
-        // dokumen lebih sering bermasalah; kondisi buruk menaikkan peluang temuan
-        const peluang = kondisi === 'perlu banyak' ? 0.5 : kondisi === 'cukup' ? 0.34 : kondisi === 'baik' ? 0.2 : 0.13
-        const dasar = rnd() < peluang + (s.kategori === 'Dokumen' ? 0.16 : si === 0 ? 0.06 : 0)
+        // Temuan biasa (ATTENTION) dan temuan yang butuh perbaikan nyata (REPAIR REQUIRED)
+        // punya peluang terpisah. Semula keduanya digabung, akibatnya hampir semua unit
+        // selalu punya item perbaikan dan tidak ada satu pun unit yang benar-benar sehat.
+        const peluangTemuan =
+          kondisi === 'perlu banyak' ? 0.34 : kondisi === 'cukup' ? 0.26 : kondisi === 'baik' ? 0.18 : 0.12
+        const peluangRepair =
+          kondisi === 'perlu banyak' ? 0.09 : kondisi === 'cukup' ? 0.05 : kondisi === 'baik' ? 0.03 : 0.02
+        // dokumen tidak pernah "perlu perbaikan" — hanya sering terlambat
+        const tambahanAtensi = (s.kategori === 'Dokumen' ? 0.16 : 0) + (si === 0 ? 0.06 : 0)
         let hasil = 'GOOD'
-        if (dasar) hasil = rnd() < 0.42 ? 'ATTENTION' : 'REPAIR REQUIRED'
+        if (s.kategori !== 'Dokumen' && rnd() < peluangRepair) hasil = 'REPAIR REQUIRED'
+        else if (rnd() < peluangTemuan + tambahanAtensi) hasil = 'ATTENTION'
         return {
           item: it,
           hasil,
@@ -328,15 +338,25 @@ STATUS_PLAN.forEach((status, idx) => {
       tanggal: inspectionDate,
       inspektur: pick(['Hendra Gunawan', 'Slamet Riyadi', 'Agus Firmansyah']),
       skor,
-      rekomendasi: skor >= 85 ? 'LAYAK JUAL' : skor >= 70 ? 'LAYAK JUAL DENGAN PERBAIKAN' : 'PERLU PERBAIKAN MENYELURUH',
+      // rekomendasi diturunkan dari temuan nyata, bukan dari skor saja: unit tanpa item
+      // REPAIR REQUIRED tidak boleh berbunyi "dengan perbaikan"
+      rekomendasi:
+        ringkasan.repair > 0
+          ? 'PERLU PERBAIKAN SEBELUM DIJUAL'
+          : ringkasan.attention > 0
+            ? 'LAYAK JUAL DENGAN CATATAN'
+            : 'LAYAK JUAL',
       ringkasan,
       sections,
-      catatan: pick([
-        'Unit secara umum sehat. Fokus perbaikan pada item bertanda REPAIR REQUIRED.',
-        'Riwayat servis jelas. Perbaikan bersifat kosmetik dan perawatan berkala.',
-        'Ada beberapa temuan kaki-kaki, sudah dijadwalkan perbaikan.',
-        'Kondisi mesin dan transmisi baik, sesuai hasil scan ECU.',
-      ]),
+      catatan:
+        ringkasan.repair > 0
+          ? 'Unit secara umum sehat. Fokus perbaikan pada item bertanda REPAIR REQUIRED.'
+          : pick([
+              'Tidak ada temuan yang menghalangi penjualan; sisanya perawatan berkala.',
+              'Riwayat servis jelas. Temuan yang ada bersifat kosmetik ringan.',
+              'Kondisi mesin dan transmisi baik, sesuai hasil scan ECU.',
+              'Temuan yang tercatat sudah ditangani pada tahap reconditioning.',
+            ]),
     })
   }
 
@@ -528,7 +548,6 @@ leadStatusPlan.forEach((status, i) => {
 
   const tahapanMenengah = ['CONTACTED', 'INTERESTED', 'TEST DRIVE', 'NEGOTIATION', 'BOOKED', 'WON'].includes(status)
   const sudahTestDrive = ['TEST DRIVE', 'NEGOTIATION', 'BOOKED', 'WON'].includes(status)
-  const terakhirInteraksi = addDays(DEMO_TODAY, -ri(0, Math.max(1, Math.min(30, daysBetween(tanggalMasuk, DEMO_TODAY)))))
   const nextFollowUp = status === 'WON' || status === 'LOST' ? null : addDays(DEMO_TODAY, ri(-4, 9))
 
   // interacton timeline
@@ -647,7 +666,7 @@ unitSold.forEach((v, i) => {
     kadaluarsa: addDays(bookingDate, 14),
     dp: roundTo(finalPrice * 0.05, 1000000),
     sisaPembayaran: finalPrice - roundTo(finalPrice * 0.05, 1000000),
-    statusPembayaran: 'LUNAS',
+    statusPembayaran: 'SELESAI',
     tipePembayaran: paymentType,
     catatan: 'Booking berlanjut ke penjualan.',
   })
@@ -670,7 +689,9 @@ unitSold.forEach((v, i) => {
     financePartner: finance,
     tenor,
     estimasiCicilan: cicilan,
-    status: pickW([['LUNAS', 62], ['DIBAYAR SEBAGIAN', 30], ['MENUNGGU DOKUMEN', 8]]),
+    // status pembayaran diturunkan dari sisa pembayaran, bukan diacak, agar tidak
+    // pernah muncul transaksi berlabel LUNAS yang masih punya sisa tagihan
+    status: sisaPembayaran === 0 ? 'LUNAS' : 'DIBAYAR SEBAGIAN',
     totalModal: v.totalCost,
     grossProfit: finalPrice - v.totalCost,
     bookingId,
@@ -746,7 +767,13 @@ const dataset = {
     { id: 'USR-02', nama: 'Yuni Astari', email: 'admin@showroom.demo', password: 'demo123', role: 'ADMIN', jabatan: 'Admin Operational', cabang: 'Jakarta Selatan' },
     { id: 'USR-03', nama: 'Andi Pratama', email: 'sales@showroom.demo', password: 'demo123', role: 'SALES', jabatan: 'Sales Executive', cabang: 'Jakarta Selatan' },
   ],
-  salesTeam: SALES,
+  // Target sales diturunkan dari realisasi, bukan ditulis tangan: target periode demo =
+  // unit yang benar-benar terjual oleh orang itu + 1 unit ruang perbaikan. Angka target
+  // yang dikarang bebas (mis. 12 unit/orang per bulan) akan membuat demo tidak masuk akal.
+  salesTeam: SALES.map((s) => ({
+    ...s,
+    target: sales.filter((x) => x.salesPIC === s.nama).length + 1,
+  })),
   vehicles,
   procurements,
   inspections,

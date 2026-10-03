@@ -72,3 +72,13 @@ export const navigasiUntukPeran = (role: Role): GrupNav[] =>
   )
 
 export const semuaItemNav = NAVIGASI.flatMap((g) => g.item)
+
+/**
+ * Peran yang berhak membuka sebuah jalur. Dipakai penjaga rute supaya daftar peran hanya
+ * hidup di satu tempat: kalau menu dan penjaga rute menyimpan daftarnya masing-masing,
+ * keduanya akan menyimpang cepat atau lambat.
+ */
+export function peranUntukJalur(jalur: string): Role[] | null {
+  const item = semuaItemNav.find((i) => i.ke === jalur)
+  return item ? item.peran : null
+}

@@ -85,7 +85,7 @@ for (const v of vehicles) {
     }
     const b = bookings.filter((x) => x.vehicleId === v.id)
     ok(b.length === 1, `${v.id}: unit SOLD punya ${b.length} booking`)
-    ok(b[0]?.statusPembayaran === 'LUNAS', `${v.id}: booking unit SOLD bukan LUNAS`)
+    ok(b[0]?.statusPembayaran === 'SELESAI', `${v.id}: booking unit SOLD harus berstatus SELESAI, bukan ${b[0]?.statusPembayaran}`)
     ok(s.length === 0 || s.some((x) => x.bookingId === b[0].id), `${v.id}: penjualan tidak menunjuk booking`)
   } else {
     ok(!sales.some((x) => x.vehicleId === v.id), `${v.id}: status ${v.status} tapi ada transaksi penjualan`)
@@ -181,6 +181,70 @@ ok(
 for (const p of procurements) {
   ok(p.nilaiPasarAcuan > 0, `${p.id}: nilai pasar acuan kosong`)
 }
+
+// ---------- 12. status pembayaran harus konsisten dengan sisa tagihan ----------
+// transaksi berlabel LUNAS tidak boleh punya sisa, dan sebaliknya
+for (const s of sales) {
+  ok(
+    (s.sisaPembayaran === 0) === (s.status === 'LUNAS'),
+    `${s.id}: status ${s.status} tidak cocok dengan sisa pembayaran ${s.sisaPembayaran}`,
+  )
+}
+for (const b of bookings) {
+  const unit = vehicles.find((v) => v.id === b.vehicleId)
+  if (!unit) continue
+  if (unit.status === 'SOLD') {
+    ok(b.statusPembayaran === 'SELESAI', `${b.id}: booking unit terjual harus SELESAI, bukan ${b.statusPembayaran}`)
+  } else {
+    ok(
+      ['DP DIBAYAR', 'MENUNGGU PEMBAYARAN'].includes(b.statusPembayaran),
+      `${b.id}: booking aktif berstatus ${b.statusPembayaran} — seharusnya menunggu pembayaran atau DP dibayar`,
+    )
+    ok(b.dp > 0, `${b.id}: booking aktif tanpa DP`)
+  }
+}
+
+// ---------- 13. target sales harus sejalan dengan realisasi ----------
+// target yang jauh di atas realisasi membuat demo terlihat mengarang
+const totalTarget = D.salesTeam.reduce((s, x) => s + x.target, 0)
+ok(
+  totalTarget >= sales.length && totalTarget <= sales.length * 2,
+  `total target sales ${totalTarget} tidak wajar dibanding ${sales.length} unit terjual`,
+)
+for (const st of D.salesTeam) {
+  const aktual = sales.filter((x) => x.salesPIC === st.nama).length
+  ok(st.target >= aktual, `${st.nama}: target ${st.target} di bawah realisasi ${aktual}`)
+}
+
+// ---------- 14. rekomendasi inspeksi harus cocok dengan temuannya ----------
+for (const ins of inspections) {
+  const { attention, repair } = ins.ringkasan
+  if (repair > 0) {
+    ok(/PERBAIKAN/.test(ins.rekomendasi), `${ins.id}: ada ${repair} item perlu perbaikan tapi rekomendasi "${ins.rekomendasi}"`)
+  } else {
+    ok(
+      !/PERBAIKAN SEBELUM/.test(ins.rekomendasi),
+      `${ins.id}: tidak ada item perlu perbaikan tapi rekomendasi "${ins.rekomendasi}"`,
+    )
+    if (attention > 0) {
+      ok(/CATATAN/.test(ins.rekomendasi), `${ins.id}: ada ${attention} temuan tapi rekomendasi "${ins.rekomendasi}"`)
+    } else {
+      ok(ins.rekomendasi === 'LAYAK JUAL', `${ins.id}: tanpa temuan tapi rekomendasi "${ins.rekomendasi}"`)
+    }
+  }
+}
+
+// ---------- 15. sebaran temuan inspeksi harus realistis, bukan seragam ----------
+const denganRepair = inspections.filter((i) => i.ringkasan.repair > 0)
+ok(
+  denganRepair.length < inspections.length,
+  `semua ${inspections.length} unit punya item perlu perbaikan — tidak realistis untuk showroom yang menjual unit siap pakai`,
+)
+ok(denganRepair.length > 0, 'tidak ada satu pun unit dengan temuan perbaikan — tidak realistis')
+const dokumenRepair = inspections.filter((i) =>
+  i.sections.filter((s) => s.kategori === 'Dokumen').some((s) => s.item.some((x) => x.hasil === 'REPAIR REQUIRED')),
+)
+ok(dokumenRepair.length === 0, 'dokumen ditandai "perlu perbaikan" — dokumen hanya bisa terlambat atau belum lengkap')
 
 // ---------- KPI turunan (yang akan tampil di dashboard) ----------
 const byStatus = {}

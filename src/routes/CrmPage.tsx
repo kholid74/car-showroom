@@ -15,6 +15,7 @@ import { STATUS_LEAD, TAHAP_PIPELINE } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { bebanSales, leadPerSumber, ringkasanLead } from '@/data/agregat-lead'
 import { TAHAP_BERIKUTNYA, tahapEfektif, useLeadStore } from '@/store/leads'
+import { usePermintaanStore } from '@/store/inquiry'
 import { jarakHari, persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 import type { Lead, LeadStatus } from '@/data/types'
 
@@ -28,6 +29,10 @@ export function CrmPage() {
   const tampilan = (params.get('tampilan') ?? 'papan') as Tampilan
 
   const { perubahan, pindahkan, reset, riwayat } = useLeadStore()
+  const { masuk: dariKatalog, reset: resetKatalog } = usePermintaanStore()
+
+  // minat dari katalog publik ikut dihitung: papan, KPI, dan filter harus cocok dengan isinya
+  const semua = useMemo(() => [...dariKatalog, ...dataset.leads], [dariKatalog])
 
   const atur = (kunci: string, nilai: string) => {
     const berikut = new URLSearchParams(params)
@@ -36,20 +41,20 @@ export function CrmPage() {
     setParams(berikut, { replace: true })
   }
 
-  const ringkas = useMemo(() => ringkasanLead(), [])
-  const perSumber = useMemo(() => leadPerSumber(), [])
-  const beban = useMemo(() => bebanSales(), [])
+  const ringkas = useMemo(() => ringkasanLead(dariKatalog), [dariKatalog])
+  const perSumber = useMemo(() => leadPerSumber(dariKatalog), [dariKatalog])
+  const beban = useMemo(() => bebanSales(dariKatalog), [dariKatalog])
 
   const terfilter = useMemo(() => {
     const kata = q.trim().toLowerCase()
-    return dataset.leads.filter((l) => {
+    return semua.filter((l) => {
       if (pic !== 'SEMUA' && l.salesPIC !== pic) return false
       if (sumber !== 'SEMUA' && l.sumber !== sumber) return false
       if (!kata) return true
       const kolom = [l.id, l.nama, l.telepon, l.vehicleLabel, l.vehicleId, l.salesPIC, l.catatan]
       return kolom.some((k) => k.toLowerCase().includes(kata))
     })
-  }, [q, pic, sumber])
+  }, [semua, q, pic, sumber])
 
   const papan = useMemo(
     () =>
@@ -70,6 +75,19 @@ export function CrmPage() {
 
   return (
     <div className="space-y-4">
+      {dariKatalog.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-accent/30 bg-accent-soft px-3 py-2.5">
+          <p className="text-2xs leading-relaxed text-ink-2">
+            <span className="font-medium text-accent">{dariKatalog.length} lead baru dari katalog publik</span> masuk
+            pada tab ini ({dariKatalog.map((l) => l.id).join(', ')}). Sumbernya Website, sudah ditugaskan ke sales
+            dengan lead aktif paling sedikit, dan ikut terhitung pada angka di halaman ini.
+          </p>
+          <Button variant="ghost" size="sm" onClick={resetKatalog}>
+            Kembalikan ke data demo
+          </Button>
+        </div>
+      )}
+
       <StripRingkas kolom={5}>
         <SelRingkas label="Lead Aktif" nilai={<Angka nilai={ringkas.aktif} ukuran="xl" />} catatan={`dari ${ringkas.total} lead yang pernah masuk`} />
         <SelRingkas label="Nilai Pipeline" nilai={<Money nilai={ringkas.nilaiPipeline} ukuran="xl" ringkas />} catatan={`Rata-rata ${rupiahRingkas(ringkas.rataBudget)} per lead`} />
@@ -96,7 +114,7 @@ export function CrmPage() {
         </label>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <FilterChip aktif={pic === 'SEMUA'} onClick={() => atur('pic', 'SEMUA')} jumlah={dataset.leads.length}>
+          <FilterChip aktif={pic === 'SEMUA'} onClick={() => atur('pic', 'SEMUA')} jumlah={semua.length}>
             Semua sales
           </FilterChip>
           {dataset.salesTeam.map((s) => (
@@ -104,7 +122,7 @@ export function CrmPage() {
               key={s.id}
               aktif={pic === s.nama}
               onClick={() => atur('pic', s.nama)}
-              jumlah={dataset.leads.filter((l) => l.salesPIC === s.nama).length}
+              jumlah={semua.filter((l) => l.salesPIC === s.nama).length}
             >
               {s.nama.split(' ')[0]}
             </FilterChip>
@@ -229,7 +247,14 @@ export function CrmPage() {
                       </Link>
                     </Td>
                     <Td><StatusPill label={STATUS_LEAD[tahap].label} pil={STATUS_LEAD[tahap].halus} dot={STATUS_LEAD[tahap].dot} /></Td>
-                    <Td>{l.sumber}</Td>
+                    <Td>
+                      {l.sumber}
+                      {l.id.startsWith('LD-KATALOG') && (
+                        <span className="ml-1.5 rounded-pill bg-accent-soft px-1.5 py-0.5 text-2xs font-medium text-accent">
+                          dari katalog
+                        </span>
+                      )}
+                    </Td>
                     <Td>
                       <Link to={`/inventory/${l.vehicleId}`} className="hover:underline">
                         <span className="block truncate text-xs text-ink-2">{l.vehicleLabel}</span>

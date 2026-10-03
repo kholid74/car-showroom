@@ -25,8 +25,18 @@ Akun demo (juga tersedia tombol masuk cepat di halaman login):
 | Admin Operational | `admin@showroom.demo` | `demo123` |
 | Sales | `sales@showroom.demo` | `demo123` |
 
-Peran hanya menyaring navigasi dan tampilan. Seluruh logika bisnis tetap membaca dataset yang sama, sehingga
-menambah akun demo baru tidak menyentuh logika aplikasi.
+Peran menyaring navigasi dan tampilan. Seluruh logika bisnis tetap membaca dataset yang sama, sehingga
+menambah akun demo baru tidak menyentuh logika aplikasi. Selain menyembunyikan menu, setiap halaman sensitif
+juga dijaga pada tingkat rute: membuka `/finance` sebagai Sales menampilkan penjelasan, bukan datanya — karena
+menyembunyikan menu saja bukan pembatasan.
+
+| Peran | Menu | Halaman yang tidak terbuka |
+|---|---|---|
+| Owner / Management | 14 menu (semua) | — |
+| Admin Operational | 10 menu | Finance, Biaya, Laporan, Performa |
+| Sales | 6 menu | Procurement, Inspeksi, Reconditioning, Dokumen, Finance, Biaya, Laporan, Performa |
+
+Katalog publik (`/katalog`) tidak butuh login sama sekali — itu sisi yang dilihat calon pembeli.
 
 ## Perintah data & pengujian
 
@@ -34,12 +44,23 @@ menambah akun demo baru tidak menyentuh logika aplikasi.
 npm run data:generate                       # menulis ulang src/data/dataset.json (deterministik)
 node scripts/verify-dataset.mjs             # memeriksa invariant dataset (wajib lulus sebelum push)
 node scripts/tokens.py                      # menghitung ulang kontras token warna (WCAG)
-NODE_PATH=$(npm root -g) node scripts/qa-screenshot.cjs   # QA visual + fungsional (Playwright)
+npm run lint                                # oxlint: variabel mati, kode berbau salah, dsb.
+NODE_PATH=$(npm root -g) node scripts/qa-screenshot.cjs     # QA alur per modul (Playwright)
+NODE_PATH=$(npm root -g) node scripts/audit-aplikasi.cjs    # audit lintas peran + laporan .qa/
 ```
+
+`scripts/audit-aplikasi.cjs` menyapu **setiap rute × setiap peran** dan memeriksa: hak akses benar-benar
+berlaku pada rute (bukan hanya menunya disembunyikan), daftar menu yang tampil sama persis dengan hak peran,
+tidak ada teks penanda fase atau placeholder, tidak ada tautan mati, setiap kontrol punya label, tepat satu
+`<main>` dan satu `<h1>` per halaman, dan tidak ada overflow horizontal di 1440/768/375. Spesifikasi hak akses
+ditulis terpisah di dalam skrip audit — kalau spesifikasi dan kode berasal dari sumber yang sama, audit tidak
+membuktikan apa pun. Hasilnya ditulis ke `.qa/audit-aplikasi.md`.
 
 `scripts/qa-screenshot.cjs` menjalankan aplikasi hasil build di browser sungguhan: memeriksa alur login,
 penyaringan menu per peran, jumlah baris tiap halaman terhadap dataset, filter, ketertelusuran antar modul,
-kepadatan tabel, overflow horizontal pada 768/375 px, dan konsol browser — lalu menyimpan screenshot ke `.qa/`.
+kepadatan tabel, notifikasi (jumlah di lonceng harus sama dengan isinya), pencarian global termasuk navigasi
+hasilnya, overflow horizontal pada 768/375 px, dan konsol browser — lalu menyimpan screenshot ke `.qa/`.
+Saat terakhir dijalankan: 89 asersi, semuanya lulus.
 
 ## Struktur
 
@@ -47,10 +68,12 @@ kepadatan tabel, overflow horizontal pada 768/375 px, dan konsol browser — lal
 scripts/     generator dataset, verifier invariant, QA Playwright, kalkulator kontras token
 src/data/    dataset.json (dihasilkan), tipe, selector turunan, agregasi lintas modul
 src/styles/  token desain (warna, tipografi, radius, gerak)
-src/components/ui/   primitif: Panel, Money, StatusPill, IdChip, Table, FilterChip, SelRingkas
-src/routes/  halaman: dashboard, inventory, detail unit, procurement, inspeksi,
-             reconditioning, dokumen, CRM, lead, customer
-src/store/   sesi demo (peran) dan perubahan tahap lead selama sesi
+src/components/ui/    primitif: Panel, Money, StatusPill, IdChip, Table, FilterChip, SelRingkas
+src/components/app/   pencarian global (Ctrl+K) dan lonceng notifikasi
+src/routes/  dashboard, inventory, detail unit, procurement, inspeksi, reconditioning, dokumen,
+             CRM, lead, customer, booking, penjualan, finance, biaya, laporan, performa sales
+src/routes/public/   katalog publik: daftar unit siap jual + halaman detail + form minat
+src/store/   sesi demo (peran), perubahan tahap lead, dan minat dari katalog (sessionStorage)
 docs/        riset desain + reference lock + decision ledger (F0)
 ```
 
@@ -70,12 +93,22 @@ hari di inventory / aging  = dihitung dari tanggal unit masuk dan tanggal siap
 
 `scripts/verify-dataset.mjs` memeriksa hal ini per unit dan per transaksi, termasuk urutan rantai proses
 (beli → inspeksi → reconditioning → ready → lead → booking → terjual), integritas relasional antar ID,
-daftar pengecualian dokumen, dan larangan teks placeholder.
+konsistensi status pembayaran dengan sisa tagihan, kewajaran target sales terhadap realisasi, daftar
+pengecualian dokumen, dan larangan teks placeholder — 13 kelompok invariant.
+
+Target penjualan tiap sales **diturunkan dari realisasi** (unit terjual + 1), bukan angka yang dikarang: pada
+demo dengan 11 penjualan, target 12 unit per orang per bulan akan langsung terlihat palsu.
 
 ## Batasan yang disengaja
 
 - **Tanpa backend.** Perubahan tahap lead pada halaman CRM hanya berlaku selama sesi dan kembali setelah halaman
   dimuat ulang; antarmuka menyatakan hal ini secara terbuka.
+- **Katalog publik tanpa foto.** Demo ini tidak memuat berkas foto unit. Setiap kartu menampilkan *slot foto*
+  secara terbuka (jumlah foto yang tercatat di sistem ikut ditampilkan), bukan gambar karangan. Nomor WhatsApp
+  showroom juga sengaja kosong: tombolnya menjelaskan hal itu alih-alih memakai nomor palsu.
+- **Minat dari katalog** masuk ke CRM sebagai lead bersumber Website, ditugaskan ke sales dengan lead aktif paling
+  sedikit, dan disimpan di `sessionStorage` — bertahan saat halaman dimuat ulang, hilang saat tab ditutup, tidak
+  dikirim ke server mana pun.
 - **Autentikasi demo**, bukan sistem keamanan. Kata sandi disimpan apa adanya di dataset demo.
 - **Dokumen hanya metadata.** Tidak ada berkas STNK/BPKB maupun data pribadi.
 - Di luar cakupan (sesuai brief): pembukuan penuh, mesin pajak, rekonsiliasi bank, payment gateway,
@@ -94,5 +127,10 @@ sebagai dekorasi.
 ## Status
 
 Dibangun bertahap dengan pemeriksaan di setiap fase: F0 riset desain · F1 kerangka + dataset · F2 dashboard ·
-F3 inventory · F4 detail unit · F5 procurement/inspeksi/reconditioning/dokumen · F6 CRM & customer.
-Berikutnya: F7 penjualan & keuangan, F8 laporan, F9 katalog publik, F10 QA menyeluruh, F11 deploy.
+F3 inventory · F4 detail unit · F5 procurement/inspeksi/reconditioning/dokumen · F6 CRM & customer ·
+F7 booking/penjualan/finance/biaya · F8 laporan, performa sales, notifikasi, pencarian global ·
+F9 katalog publik + minat masuk CRM · F10 audit lintas peran (hak akses, teks, tautan, label, lebar layar).
+Berikutnya: F11 deploy ke Vercel.
+
+Pemeriksaan yang dijalankan saat ini: verifier dataset 15 kelompok invariant · lint bersih ·
+QA alur 109 asersi · audit lintas peran ±890 pemeriksaan pada 20 rute × 3 peran + tamu + publik.

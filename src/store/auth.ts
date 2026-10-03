@@ -32,8 +32,9 @@ const keSesi = (u: User): SesiPengguna => ({
  * Autentikasi demo. Tidak ada backend: akun diperiksa terhadap dataset demo,
  * dan sesi disimpan di localStorage.
  *
- * Catatan arsitektur: peran HANYA menyaring navigasi dan tampilan; seluruh logika
- * bisnis tetap membaca dataset yang sama. Ini agar Kalsara bisa menambah akun
+ * Catatan arsitektur: peran menyaring navigasi, tampilan, DAN membuka penjaga rute
+ * (lihat nav.ts → peranUntukJalur). Logika bisnis tetap membaca dataset yang sama, tidak
+ * ada cabang "kalau owner maka…" di lapisan data — sehingga Kalsara bisa menambah akun
  * akses demo per calon klien tanpa menyentuh logika aplikasi.
  */
 export const useAuth = create<AuthState>()(

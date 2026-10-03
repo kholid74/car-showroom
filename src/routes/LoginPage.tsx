@@ -32,7 +32,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-5 py-10">
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-5 py-10">
         <header>
           <p className="id-chip text-ink-3">SHOWROOM-DEMO</p>
           <h1 className="mt-2 text-xl font-semibold tracking-tight text-ink">{dataset.meta.namaShowroom}</h1>
@@ -106,7 +106,7 @@ export function LoginPage() {
             tidak ada data pelanggan, dokumen, atau kendaraan yang nyata.
           </p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

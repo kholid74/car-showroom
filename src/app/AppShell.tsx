@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut, ExternalLink } from 'lucide-react'
+import { PencarianGlobal } from '@/components/app/PencarianGlobal'
+import { LoncengNotifikasi } from '@/components/app/LoncengNotifikasi'
 import { navigasiUntukPeran, semuaItemNav } from './nav'
 import { LABEL_PERAN, useAuth } from '@/store/auth'
 import { dataset } from '@/data'
@@ -73,6 +75,21 @@ export function AppShell() {
         </nav>
 
         <div className="border-t border-hairline px-4 py-3">
+          <a
+            href="/katalog"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-2xs font-medium text-accent hover:underline"
+          >
+            <ExternalLink size={12} />
+            Lihat katalog publik
+          </a>
+          <p className="mt-1 text-2xs leading-relaxed text-ink-3">
+            Halaman yang dilihat calon pembeli — minat dari sana masuk ke CRM sebagai lead baru.
+          </p>
+        </div>
+
+        <div className="border-t border-hairline px-4 py-3">
           <p className="label-caps">Hari demo</p>
           <p className="mt-0.5 text-2xs text-ink-2">{tanggalPanjang(dataset.meta.demoToday)}</p>
           <p className="mt-2 text-2xs text-ink-3">
@@ -89,7 +106,10 @@ export function AppShell() {
             <p className="truncate text-2xs text-ink-3">{keterangan}</p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+            <PencarianGlobal />
+            <LoncengNotifikasi />
+
             <span className="hidden text-2xs text-ink-3 lg:inline">
               Cabang {pengguna?.cabang ?? dataset.meta.cabang[0]}
             </span>

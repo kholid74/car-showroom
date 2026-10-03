@@ -56,7 +56,9 @@ export function Angka({
   return (
     <span className={`tnum ${UKURAN[ukuran]} ${NADA[nada]} ${className}`}>
       {new Intl.NumberFormat('id-ID').format(nilai)}
-      {suffix ? <span className="ml-1 text-2xs font-normal text-ink-3">{suffix}</span> : null}
+      {suffix ? (
+        <span className={`${suffix === '%' ? '' : 'ml-1 '}text-2xs font-normal text-ink-3`}>{suffix}</span>
+      ) : null}
     </span>
   )
 }

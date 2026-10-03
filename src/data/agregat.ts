@@ -54,7 +54,9 @@ export function ringkasanInspeksi() {
     jumlah: daftar.length,
     rataSkor: daftar.length ? daftar.reduce((s, i) => s + i.skor, 0) / daftar.length : 0,
     skorTerendah: daftar.length ? Math.min(...daftar.map((i) => i.skor)) : 0,
-    perluPerbaikanMenyeluruh: daftar.filter((i) => i.rekomendasi === 'PERLU PERBAIKAN MENYELURUH').length,
+    // dihitung dari temuan, bukan dari kalimat rekomendasi — supaya perubahan kata tidak
+    // diam-diam membuat angka ini jadi nol
+    perluPerbaikanMenyeluruh: daftar.filter((i) => i.ringkasan.repair > 0).length,
     attention,
     repair,
     totalItem,

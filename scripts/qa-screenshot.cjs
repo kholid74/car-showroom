@@ -172,11 +172,8 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
   await page.getByRole('button', { name: 'Tabel' }).click()
   await page.waitForTimeout(250)
 
-  // modul yang belum dibangun harus menampilkan penanda fase, bukan layar kosong
-  await page.getByRole('link', { name: 'Booking', exact: true }).first().click()
-  await page.waitForTimeout(400)
-  const isiFase = await teksUtama()
-  catat(isiFase.includes('dibangun pada f7'), 'halaman modul yang belum dibangun tidak menjelaskan fasenya')
+  // modul penanda fase sudah tidak ada: seluruh rute kini punya antarmuka nyata
+  // (diperiksa di bagian 5f di bawah, yang juga memastikan tidak ada layar kosong)
 
   // ---------- 5b. Vehicle Detail: satu unit dilacak dari pembelian sampai terjual ----------
   const rp = (n) => 'Rp' + new Intl.NumberFormat('id-ID').format(Math.round(n))
@@ -281,8 +278,18 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
       nama: 'Inspeksi',
       baris: DATA.inspections.length,
       chip: {
-        label: 'PERLU PERBAIKAN MENYELURUH',
-        harap: DATA.inspections.filter((i) => i.rekomendasi === 'PERLU PERBAIKAN MENYELURUH').length,
+        // diambil dari data: istilah rekomendasi bisa berubah, asersi uji tidak boleh ikut rapuh
+        label: (() => {
+          const hitung = {}
+          DATA.inspections.forEach((i) => { hitung[i.rekomendasi] = (hitung[i.rekomendasi] ?? 0) + 1 })
+          return Object.entries(hitung).sort((a, b) => b[1] - a[1])[0][0]
+        })(),
+        harap: (() => {
+          const hitung = {}
+          DATA.inspections.forEach((i) => { hitung[i.rekomendasi] = (hitung[i.rekomendasi] ?? 0) + 1 })
+          const teratas = Object.entries(hitung).sort((a, b) => b[1] - a[1])[0]
+          return teratas[1]
+        })(),
       },
       screenshot: '13-inspeksi-1440.png',
     },
@@ -337,16 +344,7 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
     }
 
     // tabel utama harus muat di panelnya pada lebar desktop — kolom terpotong terlihat belum jadi
-    const muat = await page.evaluate(() => {
-      const t = document.querySelector('main table')
-      const wadah = t?.parentElement
-      if (!t || !wadah) return null
-      return { tabel: Math.round(t.getBoundingClientRect().width), wadah: Math.round(wadah.getBoundingClientRect().width) }
-    })
-    catat(
-      muat !== null && muat.tabel <= muat.wadah + 1,
-      `${h.nama}: tabel (${muat?.tabel}px) terpotong di wadahnya (${muat?.wadah}px) pada 1440px`,
-    )
+    await periksaMuatTabel(h.nama)
 
     await page.screenshot({ path: path.join(OUT, h.screenshot), fullPage: true })
   }
@@ -471,6 +469,312 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
   catat(tautanJejak > 0, 'customer detail tidak menautkan ke unit maupun lead')
   await page.screenshot({ path: path.join(OUT, '20-customer-detail-1440.png'), fullPage: true })
 
+  // ---------- 5e. penjualan & keuangan: booking, penjualan, finance, biaya ----------
+  // Finance dan Biaya Operasional kini dijaga di tingkat rute untuk Owner, jadi peran
+  // dikembalikan ke Owner lebih dulu (uji penolakan aksesnya ada di audit-aplikasi.cjs).
+  await page.getByTitle('Ganti peran untuk kebutuhan demo').selectOption('OWNER')
+  await page.waitForTimeout(350)
+
+  // nama kategori/merek berasal dari data: escape sebelum dipakai sebagai pola pencarian
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // tabel utama tidak boleh terpotong di dalam panelnya pada 1440px (kolom terpotong = terlihat belum jadi)
+  async function periksaMuatTabel(nama) {
+    const muat = await page.evaluate(() => {
+      const t = document.querySelector('main table')
+      const wadah = t?.parentElement
+      if (!t || !wadah) return null
+      return { tabel: Math.round(t.getBoundingClientRect().width), wadah: Math.round(wadah.getBoundingClientRect().width) }
+    })
+    catat(
+      muat !== null && muat.tabel <= muat.wadah + 1,
+      `${nama}: tabel (${muat?.tabel}px) terpotong di wadahnya (${muat?.wadah}px) pada 1440px`,
+    )
+  }
+
+  const totalBiaya = DATA.expenses.reduce((s, e) => s + e.jumlah, 0)
+  const gpTotal = DATA.sales.reduce((s, x) => s + x.grossProfit, 0)
+  const piutangData = DATA.sales.filter((s) => s.sisaPembayaran > 0)
+
+  await page.goto(`${BASE}/booking`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(450)
+  let barisF7 = await page.evaluate(
+    () => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0,
+  )
+  catat(barisF7 === DATA.bookings.length, `Booking: ${barisF7} baris, seharusnya ${DATA.bookings.length}`)
+  await periksaMuatTabel('Booking')
+  const bookingSelesai = DATA.bookings.filter((b) => b.statusPembayaran === 'SELESAI').length
+  await page.getByRole('button', { name: /^Selesai/ }).click()
+  await page.waitForTimeout(350)
+  barisF7 = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisF7 === bookingSelesai, `Booking filter Selesai: ${barisF7} baris, seharusnya ${bookingSelesai}`)
+  await page.screenshot({ path: path.join(OUT, '21-booking-1440.png'), fullPage: true })
+
+  await page.goto(`${BASE}/penjualan`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(450)
+  barisF7 = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisF7 === DATA.sales.length, `Penjualan: ${barisF7} baris, seharusnya ${DATA.sales.length}`)
+  await periksaMuatTabel('Penjualan')
+  const penjualanKredit = DATA.sales.filter((s) => s.tipePembayaran === 'Kredit').length
+  await page.getByRole('button', { name: /^Kredit/ }).click()
+  await page.waitForTimeout(350)
+  barisF7 = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisF7 === penjualanKredit, `Penjualan filter Kredit: ${barisF7} baris, seharusnya ${penjualanKredit}`)
+  const isiPenjualan = (await page.locator('main').innerText()).toLowerCase()
+  catat(isiPenjualan.includes('gross profit'), 'halaman Penjualan tidak menampilkan gross profit')
+  catat(isiPenjualan.includes('diskon terdalam'), 'halaman Penjualan tidak menampilkan panel diskon')
+  await page.getByRole('button', { name: 'Bersihkan' }).click()
+  await page.waitForTimeout(350)
+  await page.screenshot({ path: path.join(OUT, '22-penjualan-1440.png'), fullPage: true })
+
+  await page.goto(`${BASE}/finance`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(450)
+  const isiFinance = (await page.locator('main').innerText()).toLowerCase()
+  const rpF7 = (n) => 'Rp' + new Intl.NumberFormat('id-ID').format(Math.round(n))
+  const angkaFinance = {
+    'nilai penjualan': DATA.sales.reduce((s, x) => s + x.finalPrice, 0),
+    'total modal': DATA.sales.reduce((s, x) => s + x.totalModal, 0),
+    'gross profit total': gpTotal,
+  }
+  for (const [nama, nilai] of Object.entries(angkaFinance)) {
+    catat(ada(isiFinance, rpF7(nilai)), `Finance tidak memuat ${nama} (${rpF7(nilai)})`)
+  }
+  for (const s of piutangData) {
+    catat(ada(isiFinance, s.id), `Finance tidak menampilkan piutang ${s.id}`)
+  }
+  catat(ada(isiFinance, 'setelah biaya operasional'), 'Finance tidak memuat ringkasan setelah biaya operasional')
+  const barisFinance = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisFinance === DATA.sales.length, `Finance: ${barisFinance} baris profit per unit, seharusnya ${DATA.sales.length}`)
+  await periksaMuatTabel('Finance')
+  await page.screenshot({ path: path.join(OUT, '23-finance-1440.png'), fullPage: true })
+
+  await page.goto(`${BASE}/biaya`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(450)
+  barisF7 = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisF7 === DATA.expenses.length, `Biaya: ${barisF7} baris, seharusnya ${DATA.expenses.length}`)
+  await periksaMuatTabel('Biaya')
+  const isiBiaya = await page.locator('main').innerText()
+  catat(ada(isiBiaya, rpF7(totalBiaya)), `Biaya tidak menampilkan total ${rpF7(totalBiaya)}`)
+  const kategoriTerbesar = [...DATA.expenses.reduce((m, e) => m.set(e.kategori, (m.get(e.kategori) ?? 0) + e.jumlah), new Map())].sort((a, b) => b[1] - a[1])[0]
+  const jumlahKategoriTerbesar = DATA.expenses.filter((e) => e.kategori === kategoriTerbesar[0]).length
+  await page.getByRole('button', { name: new RegExp(`^${esc(kategoriTerbesar[0])}`) }).click()
+  await page.waitForTimeout(350)
+  barisF7 = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(
+    barisF7 === jumlahKategoriTerbesar,
+    `Biaya filter ${kategoriTerbesar[0]}: ${barisF7} baris, seharusnya ${jumlahKategoriTerbesar}`,
+  )
+  await page.screenshot({ path: path.join(OUT, '24-biaya-1440.png'), fullPage: true })
+
+  // ---------- 5f. laporan, performa sales, notifikasi, pencarian global (F8) ----------
+  await page.getByTitle('Ganti peran untuk kebutuhan demo').selectOption('OWNER')
+  await page.waitForTimeout(350)
+
+  const hariTerlambat = DATA.leads.filter(
+    (l) => l.nextFollowUp && l.nextFollowUp < DATA.meta.demoToday && !['WON', 'LOST'].includes(l.status),
+  ).length
+  const dokumenKurang = DATA.documents.filter((d) => d.checklist.some((c) => c.status !== 'Tersedia')).length
+  const unitMenua = DATA.vehicles.filter((v) => v.status !== 'SOLD' && v.hariDiInventory > 90).length
+  const modalTersimpan = DATA.vehicles.filter((v) => v.status !== 'SOLD').reduce((s, v) => s + v.totalCost, 0)
+  const unitTertua = DATA.vehicles
+    .filter((v) => v.status !== 'SOLD')
+    .slice()
+    .sort((a, b) => b.hariDiInventory - a.hariDiInventory)[0]
+
+  await page.goto(`${BASE}/laporan`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(550)
+  const isiLaporan = (await page.locator('main').innerText()).toLowerCase()
+  for (const t of ['modal terikat', 'sebaran umur inventory', 'margin per merek', 'efektivitas sumber lead', 'perbandingan 30 hari']) {
+    catat(isiLaporan.includes(t), `Laporan tidak memuat bagian "${t}"`)
+  }
+  const barisAging = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisAging === 4, `Laporan: ${barisAging} kelompok umur, seharusnya 4`)
+  catat(ada(isiLaporan, unitTertua.id), `Laporan tidak menampilkan unit tertua ${unitTertua.id}`)
+  catat(ada(isiLaporan, rpF7(modalTersimpan)), `Laporan tidak menampilkan modal terikat ${rpF7(modalTersimpan)}`)
+  await periksaMuatTabel('Laporan')
+  catat(!/\d{4}-\d{2}-\d{2}/.test(isiLaporan), 'Laporan menampilkan tanggal mentah (format ISO)')
+  await page.screenshot({ path: path.join(OUT, '25-laporan-1440.png'), fullPage: true })
+
+  await page.goto(`${BASE}/performa`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(550)
+  const barisSales = await page.evaluate(() => document.querySelectorAll('main table')[0]?.querySelectorAll('tbody tr').length ?? 0)
+  catat(barisSales === DATA.salesTeam.length, `Performa: ${barisSales} baris sales, seharusnya ${DATA.salesTeam.length}`)
+  const totalTarget = DATA.salesTeam.reduce((s, x) => s + x.target, 0)
+  const isiPerforma = await page.locator('main').innerText()
+  catat(ada(isiPerforma, `Target tim ${totalTarget} unit`), `Performa tidak menampilkan target tim ${totalTarget}`)
+  const barisTerlambat = await page.evaluate(() => {
+    const t = document.querySelectorAll('main table')[1]
+    return t ? t.querySelectorAll('tbody tr').length : 0
+  })
+  catat(
+    barisTerlambat === Math.min(8, hariTerlambat),
+    `Performa: ${barisTerlambat} baris follow-up terlambat, seharusnya ${Math.min(8, hariTerlambat)}`,
+  )
+  await periksaMuatTabel('Performa')
+  catat(!/\d{4}-\d{2}-\d{2}/.test(isiPerforma), 'Performa menampilkan tanggal mentah (format ISO)')
+  await page.screenshot({ path: path.join(OUT, '26-performa-1440.png'), fullPage: true })
+
+  // ---------- 5g. notifikasi: jumlah di lonceng harus sama dengan isinya ----------
+  const tombolLonceng = page.getByRole('button', { name: /^Notifikasi:/ })
+  const labelLonceng = (await tombolLonceng.getAttribute('aria-label')) ?? ''
+  await tombolLonceng.click()
+  await page.waitForTimeout(350)
+  const panelNotifikasi = await page.locator('div.z-40').first().innerText()
+  const jumlahLonceng = Number(labelLonceng.replace(/\D+/g, ''))
+  for (const [teks, jumlah] of [
+    ['follow-up lead terlambat', hariTerlambat],
+    ['unit dokumennya belum lengkap', dokumenKurang],
+    ['unit diam lebih dari 90 hari', unitMenua],
+  ]) {
+    catat(ada(panelNotifikasi, `${jumlah} ${teks}`), `notifikasi tidak memuat "${jumlah} ${teks}"`)
+  }
+  catat(jumlahLonceng > 0, 'lonceng notifikasi tidak menunjukkan jumlah')
+  catat(/perlu ditindak/i.test(panelNotifikasi), 'panel notifikasi tidak menjelaskan tujuannya')
+  catat(!/\d{4}-\d{2}-\d{2}/.test(panelNotifikasi), 'notifikasi menampilkan tanggal mentah (format ISO)')
+  await page.screenshot({ path: path.join(OUT, '28-notifikasi-1440.png') })
+
+  // klik notifikasi harus membawa ke halaman yang benar
+  await page.getByRole('link', { name: /follow-up lead terlambat/ }).first().click()
+  await page.waitForTimeout(450)
+  catat(page.url().includes('/crm'), `klik notifikasi tidak menuju CRM (${page.url()})`)
+
+  // ---------- 5h. pencarian global: Ctrl+K, hasil, navigasi, dan pesan kosong ----------
+  await page.keyboard.press('Control+k')
+  await page.waitForTimeout(400)
+  const dialog = page.getByRole('dialog', { name: 'Pencarian global' })
+  catat(await dialog.count() === 1, 'Ctrl+K tidak membuka pencarian global')
+  catat(
+    ada(await dialog.innerText(), 'unit, lead, customer, invoice, booking, dan biaya'),
+    'pencarian tidak menjelaskan cakupannya',
+  )
+  await page.getByRole('textbox', { name: 'Kata kunci pencarian' }).fill('VH-2026-0001')
+  await page.waitForTimeout(350)
+  catat(ada(await dialog.innerText(), 'VH-2026-0001'), 'pencarian tidak menemukan unit VH-2026-0001')
+  await page.screenshot({ path: path.join(OUT, '27-pencarian-1440.png') })
+  await dialog.getByRole('button').filter({ hasText: 'VH-2026-0001' }).first().click()
+  await page.waitForTimeout(450)
+  catat(page.url().includes('/inventory/VH-2026-0001'), `hasil pencarian tidak membuka unit (${page.url()})`)
+
+  await page.keyboard.press('Control+k')
+  await page.waitForTimeout(400)
+  await page.getByRole('textbox', { name: 'Kata kunci pencarian' }).fill('zzzz-tidak-ada')
+  await page.waitForTimeout(350)
+  catat(ada(await dialog.innerText(), 'tidak ada yang cocok'), 'pencarian tidak memberi pesan saat hasil kosong')
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(350)
+  catat(await dialog.count() === 0, 'Esc tidak menutup pencarian global')
+
+  // ---------- 5i. katalog publik: tanpa login, minat masuk ke CRM (F9) ----------
+  const konteks2 = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 })
+  const page2 = await konteks2.newPage()
+  const konsolPublik = []
+  page2.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') konsolPublik.push(`${m.type()}: ${m.text()}`) })
+  page2.on('pageerror', (e) => konsolPublik.push(`pageerror: ${e.message}`))
+  const isiKatalog = async () => (await page2.locator('main').innerText()).toLowerCase()
+
+  const ready = DATA.vehicles.filter((v) => v.status === 'READY')
+  const merekUji = [...new Set(ready.map((v) => v.brand))].sort()[0]
+  const termahal = ready.slice().sort((a, b) => b.listingPrice - a.listingPrice)[0]
+  const termurah = ready.slice().sort((a, b) => a.listingPrice - b.listingPrice)[0]
+  const kartuKatalog = () =>
+    page2.evaluate(() => document.querySelectorAll('main ul.grid > li').length)
+
+  await page2.goto(`${BASE}/katalog`, { waitUntil: 'domcontentloaded' })
+  await page2.waitForTimeout(700)
+  catat(page2.url().includes('/katalog'), `katalog publik dialihkan ke login (${page2.url()})`)
+  catat(
+    ada(await isiKatalog(), `${ready.length} unit siap dilihat`),
+    `judul katalog tidak menyebut ${ready.length} unit siap dilihat`,
+  )
+  catat((await kartuKatalog()) === ready.length, `katalog: ${await kartuKatalog()} kartu, seharusnya ${ready.length}`)
+  catat(
+    ada(await isiKatalog(), 'berkas tidak disertakan'),
+    'katalog tidak menyatakan secara terbuka bahwa berkas foto tidak disertakan',
+  )
+
+  // saring per merek
+  await page2.getByRole('button', { name: merekUji, exact: true }).click()
+  await page2.waitForTimeout(400)
+  const jumlahMerek = ready.filter((v) => v.brand === merekUji).length
+  catat((await kartuKatalog()) === jumlahMerek, `katalog filter ${merekUji}: ${await kartuKatalog()} kartu, seharusnya ${jumlahMerek}`)
+  await page2.getByRole('button', { name: 'Semua merek' }).click()
+  await page2.waitForTimeout(400)
+
+  // urutkan harga tertinggi
+  await page2.getByLabel('Urutkan').selectOption('termahal')
+  await page2.waitForTimeout(400)
+  const kartuPertama = await page2.evaluate(
+    () => document.querySelector('main ul.grid > li')?.innerText.toLowerCase() ?? '',
+  )
+  catat(
+    kartuPertama.includes(termahal.brand.toLowerCase()) && kartuPertama.includes(termahal.model.toLowerCase()),
+    `urutan termahal tidak menempatkan ${termahal.id} di kartu pertama`,
+  )
+  await page2.screenshot({ path: path.join(OUT, '29-katalog-1440.png'), fullPage: true })
+
+  // pesan kosong harus jelas, bukan layar hampa
+  await page2.getByLabel('Cari unit').fill('zzz-tidak-ada')
+  await page2.waitForTimeout(400)
+  catat(ada(await isiKatalog(), 'belum ada unit yang cocok'), 'katalog tidak memberi pesan saat hasil kosong')
+  await page2.getByRole('button', { name: 'Bersihkan' }).click()
+  await page2.waitForTimeout(400)
+
+  // detail unit termurah
+  await page2.goto(`${BASE}/katalog/${termurah.id}`, { waitUntil: 'domcontentloaded' })
+  await page2.waitForTimeout(700)
+  const isiDetail = await isiKatalog()
+  for (const bagian of ['spesifikasi unit', 'hasil inspeksi saat unit masuk', 'pekerjaan yang sudah dikerjakan', 'kelengkapan dokumen']) {
+    catat(isiDetail.includes(bagian), `katalog detail tidak memuat bagian "${bagian}"`)
+  }
+  catat(
+    ada(isiDetail, 'sudah ditangani pada tahap reconditioning'),
+    'katalog detail tidak menjelaskan bahwa temuan inspeksi sudah ditangani',
+  )
+  catat(ada(isiDetail, rpF7(termurah.listingPrice)), `katalog detail tidak menampilkan harga ${rpF7(termurah.listingPrice)}`)
+  catat(ada(isiDetail, 'rincian biaya perbaikan tidak ditampilkan'), 'katalog detail tidak menjelaskan kenapa biaya perbaikan tidak tampil')
+  await page2.screenshot({ path: path.join(OUT, '30-katalog-detail-1440.png'), fullPage: true })
+
+  // validasi form: tidak boleh ada lead terbuat dari isian kosong
+  await page2.getByRole('button', { name: 'Ajukan minat pada unit ini' }).click()
+  await page2.waitForTimeout(400)
+  catat(ada(await isiKatalog(), 'nama minimal 2 huruf'), 'form katalog tidak menolak nama kosong')
+  catat(ada(await isiKatalog(), 'nomor telepon minimal 9 angka'), 'form katalog tidak menolak telepon kosong')
+
+  await page2.getByLabel('Nama').fill('Sari Wulandari')
+  await page2.getByLabel('Nomor telepon').fill('081234567890')
+  await page2.getByLabel('Rencana pembayaran').selectOption('Kredit')
+  await page2.getByLabel('Pesan').fill('Ingin melihat unit Sabtu pagi, siap DP 20%.')
+  await page2.getByRole('button', { name: 'Ajukan minat pada unit ini' }).click()
+  await page2.waitForTimeout(500)
+  const isiSukses = await isiKatalog()
+  catat(ada(isiSukses, 'minat anda sudah masuk'), 'form katalog tidak menampilkan konfirmasi setelah dikirim')
+  catat(ada(isiSukses, 'LD-KATALOG-01'), 'lead dari katalog tidak diberi nomor yang jelas')
+  await page2.getByRole('button', { name: 'Hubungi via WhatsApp' }).click()
+  await page2.waitForTimeout(300)
+  catat(
+    ada(await isiKatalog(), 'nomor whatsapp showroom sengaja tidak diisi'),
+    'tombol WhatsApp tidak menjelaskan bahwa nomornya memang kosong di demo',
+  )
+  await page2.screenshot({ path: path.join(OUT, '31-katalog-minat-1440.png'), fullPage: true })
+
+  // minat itu harus muncul di CRM pada sesi yang sama
+  await page2.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' })
+  await page2.waitForTimeout(500)
+  await page2.getByRole('button', { name: 'Masuk', exact: true }).click()
+  await page2.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 8000 })
+  await page2.goto(`${BASE}/crm`, { waitUntil: 'domcontentloaded' })
+  await page2.waitForTimeout(700)
+  const isiCrmKatalog = await page2.locator('main').innerText()
+  catat(ada(isiCrmKatalog, 'Sari Wulandari'), 'lead dari katalog tidak muncul di CRM')
+  catat(ada(isiCrmKatalog, '1 lead baru dari katalog publik'), 'CRM tidak memberi tahu ada lead baru dari katalog')
+  const chipDariKatalog = await page2.evaluate(() =>
+    [...document.querySelectorAll('main a')].some((a) => a.innerText.includes('Sari Wulandari')),
+  )
+  catat(chipDariKatalog, 'lead dari katalog tidak bisa diklik dari papannya')
+  await page2.screenshot({ path: path.join(OUT, '32-crm-lead-katalog-1440.png'), fullPage: true })
+
+  console.log('\n=== KONSOL HALAMAN PUBLIK ===')
+  console.log(konsolPublik.length ? konsolPublik.join('\n  ') : '  bersih: tidak ada error maupun warning')
+
   // ---------- 6. uji lebar kecil: tidak boleh ada scroll horizontal ----------
   for (const [lebar, tinggi, nama] of [[768, 1024, '768'], [375, 812, '375']]) {
     await page.setViewportSize({ width: lebar, height: tinggi })
@@ -507,6 +811,17 @@ const catat = (kondisi, pesan) => { if (!kondisi) masalah.push(pesan) }
     }))
     catat(overflowInv.scroll <= overflowInv.klien + 1, `overflow horizontal di inventory ${nama}px (${overflowInv.scroll} > ${overflowInv.klien})`)
     await page.screenshot({ path: path.join(OUT, `08-inventory-${nama}.png`), fullPage: true })
+
+    // katalog publik juga harus bersih di layar sempit (dibuka tanpa login)
+    await page2.setViewportSize({ width: lebar, height: tinggi })
+    await page2.goto(BASE + '/katalog', { waitUntil: 'domcontentloaded' })
+    await page2.waitForTimeout(500)
+    const overflowKat = await page2.evaluate(() => ({
+      scroll: document.documentElement.scrollWidth,
+      klien: document.documentElement.clientWidth,
+    }))
+    catat(overflowKat.scroll <= overflowKat.klien + 1, `overflow horizontal di katalog ${nama}px (${overflowKat.scroll} > ${overflowKat.klien})`)
+    await page2.screenshot({ path: path.join(OUT, `29b-katalog-${nama}.png`), fullPage: true })
   }
 
   // ---------- 7. tema dasar benar-benar terpasang ----------

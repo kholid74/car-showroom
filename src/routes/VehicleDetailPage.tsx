@@ -78,9 +78,9 @@ export function VehicleDetailPage() {
             Kembali ke inventory
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight text-ink">
+            <h2 className="text-lg font-semibold tracking-tight text-ink">
               {unit.brand} {unit.model} {unit.variant}
-            </h1>
+            </h2>
             <StatusPill label={STATUS_UNIT[unit.status].label} pil={STATUS_UNIT[unit.status].pil} />
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-ink-3">
@@ -1157,7 +1157,7 @@ function UnitTidakDitemukan({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-xl">
       <Panel>
-        <h1 className="text-xs font-semibold text-ink">Unit {id} tidak ditemukan</h1>
+        <h2 className="text-xs font-semibold text-ink">Unit {id} tidak ditemukan</h2>
         <p className="mt-1 text-xs text-ink-2">
           Unit dengan ID tersebut tidak ada di data demo. ID unit yang tersedia berformat{' '}
           <span className="id-chip">VH-2026-0001</span> sampai <span className="id-chip">VH-2026-0044</span>.
