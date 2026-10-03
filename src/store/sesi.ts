@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { DEMO_TODAY } from '@/data/meta'
 import type {
   Booking,
+  Customer,
   Expense,
   Inspection,
   InspectionSection,
@@ -46,6 +47,8 @@ export interface CatatanSesi {
     | 'Booking batal'
     | 'Reconditioning'
     | 'Inspeksi'
+    | 'Customer'
+    | 'Pembelian'
   ringkas: string
 }
 
@@ -142,6 +145,20 @@ export interface MasukanPekerjaan {
   catatan: string
 }
 
+export interface MasukanCustomer {
+  nama: string
+  telepon: string
+  email: string
+  kota: string
+  alamat: string
+  sumberLead: SumberLead
+  salesPIC: string
+  budget: number
+  preferensiPembayaran: TipePembayaran
+  pekerjaan: string
+  catatan: string
+}
+
 /** Perpindahan tahap unit yang diizinkan — gerbang proses, bukan sekadar pilihan bebas. */
 export const TAHAP_UNIT_BERIKUTNYA: Partial<Record<UnitStatus, UnitStatus>> = {
   'BARU MASUK': 'INSPEKSI',
@@ -204,6 +221,10 @@ interface KeadaanSesi {
   ubahPekerjaan: Record<string, Partial<ReconItem>>
   reconSelesai: string[]
   inspeksiBaru: Inspection[]
+  ubahProcurement: Record<string, Partial<Procurement>>
+  dokumenPembelian: Record<string, string[]>
+  customerBaru: Customer[]
+  ubahCustomer: Record<string, Partial<Customer>>
 
   ubahStatusUnit: (vehicleId: string, ke: UnitStatus, catatan: string, label: string) => void
   pindahkanLead: (leadId: string, dari: LeadStatus, ke: LeadStatus, label: string) => void
@@ -223,6 +244,15 @@ interface KeadaanSesi {
   ubahStatusPekerjaan: (reconId: string, itemId: string, status: ReconItem['status'], label: string) => void
   selesaikanRecon: (reconId: string, label: string) => void
   simpanInspeksi: (masukan: MasukanInspeksi) => Inspection
+  ubahDataProcurement: (
+    id: string,
+    patch: Partial<Procurement>,
+    label: string,
+    tautanUnit?: { vehicleId: string; hargaDeal: number },
+  ) => void
+  tandaiDokumenPembelian: (id: string, daftar: string[], label: string) => void
+  tambahCustomer: (masukan: MasukanCustomer) => Customer
+  ubahDataCustomer: (id: string, patch: Partial<Customer>, label: string) => void
   reset: () => void
 }
 
@@ -261,6 +291,10 @@ export const useSesi = create<KeadaanSesi>()(
       ubahPekerjaan: {},
       reconSelesai: [],
       inspeksiBaru: [],
+      ubahProcurement: {},
+      dokumenPembelian: {},
+      customerBaru: [],
+      ubahCustomer: {},
 
       ubahStatusUnit: (vehicleId, ke, catatanTahap, label) =>
         set((s) => ({
@@ -628,6 +662,68 @@ export const useSesi = create<KeadaanSesi>()(
         return inspeksi
       },
 
+      ubahDataProcurement: (id, patch, label, tautanUnit) =>
+        set((s) => ({
+          versi: s.versi + 1,
+          ubahProcurement: { ...s.ubahProcurement, [id]: { ...s.ubahProcurement[id], ...patch } },
+          // harga deal menentukan modal unit — keduanya tidak boleh berpisah
+          ubahUnit: tautanUnit
+            ? {
+                ...s.ubahUnit,
+                [tautanUnit.vehicleId]: {
+                  ...s.ubahUnit[tautanUnit.vehicleId],
+                  purchasePrice: tautanUnit.hargaDeal,
+                },
+              }
+            : s.ubahUnit,
+          catatan: catat(
+            s.catatan,
+            'Pembelian',
+            `${label} diperbarui (${Object.keys(patch).join(', ')})${
+              tautanUnit ? ` · modal unit mengikuti harga deal ${tautanUnit.hargaDeal.toLocaleString('id-ID')}` : ''
+            }`,
+          ),
+        })),
+
+      tandaiDokumenPembelian: (id, daftar, label) =>
+        set((s) => ({
+          versi: s.versi + 1,
+          dokumenPembelian: { ...s.dokumenPembelian, [id]: daftar },
+          catatan: catat(s.catatan, 'Pembelian', `${label} · dokumen diterima: ${daftar.length} berkas`),
+        })),
+
+      tambahCustomer: (m) => {
+        const customer: Customer = {
+          id: nomorUrut('CST-SESI-', get().customerBaru.length),
+          nama: m.nama.trim(),
+          telepon: m.telepon.trim(),
+          email: m.email.trim() || '—',
+          kota: m.kota.trim(),
+          alamat: m.alamat.trim() || '—',
+          sumberLead: m.sumberLead,
+          salesPIC: m.salesPIC,
+          budget: m.budget,
+          preferensiPembayaran: m.preferensiPembayaran,
+          pekerjaan: m.pekerjaan.trim() || '—',
+          sejak: DEMO_TODAY,
+          catatan: m.catatan.trim() || 'Customer dicatat pada sesi demo.',
+          kreditAktif: [],
+        }
+        set((s) => ({
+          versi: s.versi + 1,
+          customerBaru: [customer, ...s.customerBaru],
+          catatan: catat(s.catatan, 'Customer', `${customer.nama} · ${customer.kota}`),
+        }))
+        return customer
+      },
+
+      ubahDataCustomer: (id, patch, label) =>
+        set((s) => ({
+          versi: s.versi + 1,
+          ubahCustomer: { ...s.ubahCustomer, [id]: { ...s.ubahCustomer[id], ...patch } },
+          catatan: catat(s.catatan, 'Customer', `${label} diperbarui (${Object.keys(patch).join(', ')})`),
+        })),
+
       reset: () =>
         set((s) => ({
           versi: s.versi + 1,
@@ -657,6 +753,10 @@ export const useSesi = create<KeadaanSesi>()(
           ubahPekerjaan: {},
           reconSelesai: [],
           inspeksiBaru: [],
+          ubahProcurement: {},
+          dokumenPembelian: {},
+          customerBaru: [],
+          ubahCustomer: {},
         })),
     }),
     {
@@ -688,7 +788,11 @@ export const jumlahPerubahan = (s: KeadaanSesi) =>
   Object.values(s.reconItemBaru).reduce((n, x) => n + x.length, 0) +
   Object.keys(s.ubahPekerjaan).length +
   s.reconSelesai.length +
-  s.inspeksiBaru.length
+  s.inspeksiBaru.length +
+  Object.keys(s.ubahProcurement).length +
+  Object.keys(s.dokumenPembelian).length +
+  s.customerBaru.length +
+  Object.keys(s.ubahCustomer).length
 
 /** Ringkasan satu baris: apa saja yang sudah diubah pengunjung pada sesi ini. */
 export function ringkasPerubahan(s: KeadaanSesi): string {
@@ -712,5 +816,9 @@ export function ringkasPerubahan(s: KeadaanSesi): string {
     bagian.push(`${Object.values(s.reconItemBaru).reduce((n, x) => n + x.length, 0)} pekerjaan reconditioning ditambahkan`)
   if (s.reconSelesai.length) bagian.push(`${s.reconSelesai.length} reconditioning ditandai selesai`)
   if (s.inspeksiBaru.length) bagian.push(`${s.inspeksiBaru.length} hasil inspeksi dicatat`)
+  if (Object.keys(s.ubahProcurement).length) bagian.push(`${Object.keys(s.ubahProcurement).length} data pembelian diperbarui`)
+  if (Object.keys(s.dokumenPembelian).length) bagian.push(`${Object.keys(s.dokumenPembelian).length} dokumen pembelian ditandai`)
+  if (s.customerBaru.length) bagian.push(`${s.customerBaru.length} customer ditambahkan`)
+  if (Object.keys(s.ubahCustomer).length) bagian.push(`${Object.keys(s.ubahCustomer).length} data customer diperbarui`)
   return bagian.join(' · ')
 }

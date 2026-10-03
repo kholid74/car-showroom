@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, Search, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/Button'
 import { dataset } from '@/data'
 import { procurementPerSumber, ringkasanProcurement } from '@/data/agregat'
 import { persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
+import { FormProcurement } from '@/components/app/FormProcurement'
+import { FormUnit } from '@/components/app/FormUnit'
+import type { Procurement } from '@/data/types'
 
 export function ProcurementPage() {
   const [params, setParams] = useSearchParams()
@@ -24,6 +27,8 @@ export function ProcurementPage() {
     setParams(berikut, { replace: true })
   }
 
+  const [formBeli, setFormBeli] = useState(false)
+  const [formProc, setFormProc] = useState<Procurement | null>(null)
   const ringkas = useMemo(() => ringkasanProcurement(), [])
   const perSumber = useMemo(() => procurementPerSumber(), [])
 
@@ -64,6 +69,23 @@ export function ProcurementPage() {
             className="h-7 w-full rounded-control border border-hairline-strong bg-panel pl-7 pr-2 text-xs text-ink placeholder:text-ink-3 hover:bg-sunken focus-visible:bg-panel"
           />
         </label>
+
+        <Button variant="primary" size="sm" ikon={<Plus size={13} />} onClick={() => setFormBeli(true)}>
+          Catat pembelian unit
+        </Button>
+
+        {formBeli && <FormUnit terbuka onTutup={() => setFormBeli(false)} />}
+        {formProc && (
+          <FormProcurement
+            terbuka
+            procurement={formProc}
+            label={(() => {
+              const u = dataset.vehicles.find((v) => v.id === formProc.vehicleId)
+              return u ? `${u.brand} ${u.model} ${u.tahun}` : formProc.vehicleId
+            })()}
+            onTutup={() => setFormProc(null)}
+          />
+        )}
 
         <div className="flex flex-wrap items-center gap-1.5">
           <FilterChip aktif={sumber === 'SEMUA'} onClick={() => atur('sumber', 'SEMUA')} jumlah={ringkas.jumlah}>
@@ -157,13 +179,24 @@ export function ProcurementPage() {
                       <Td className="hidden 2xl:table-cell"><span className="text-2xs text-ink-2">{p.pic}</span></Td>
                       <Td align="right"><span className="text-2xs text-ink-2">{tanggalPendek(p.tanggalPembelian)}</span></Td>
                       <Td align="right">
-                        <Link
-                          to={`/inventory/${p.vehicleId}?tab=procurement`}
-                          aria-label={`Buka detail ${p.vehicleId}`}
-                          className="inline-flex text-ink-3 hover:text-accent"
-                        >
-                          <ChevronRight size={15} />
-                        </Link>
+                        <span className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setFormProc(p)}
+                            aria-label={`Ubah pembelian ${p.id}`}
+                            title="Ubah harga penawaran, harga deal, atau dokumen diterima"
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <Link
+                            to={`/inventory/${p.vehicleId}?tab=procurement`}
+                            aria-label={`Buka detail ${p.vehicleId}`}
+                            className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                          >
+                            <ChevronRight size={15} />
+                          </Link>
+                        </span>
                       </Td>
                     </Baris>
                   )

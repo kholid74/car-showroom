@@ -1,5 +1,6 @@
 import type {
   Booking,
+  Customer,
   Dataset,
   Expense,
   Inspection,
@@ -200,9 +201,29 @@ const biaya = memo<Expense[]>(() => {
   return [...tambahan, ...dasarDisesuaikan]
 })
 
-const pengadaan = memo<Procurement[]>(() =>
-  (sesi.procurementBaru ?? []).length ? [...sesi.procurementBaru, ...dasar.procurements] : dasar.procurements,
-)
+const pengadaan = memo<Procurement[]>(() => {
+  const baru = sesi.procurementBaru ?? []
+  const ubah = sesi.ubahProcurement ?? {}
+  const dokumen = sesi.dokumenPembelian ?? {}
+  if (!baru.length && !ada(ubah) && !ada(dokumen)) return dasar.procurements
+
+  const sesuaikan = (p: Procurement) => {
+    let hasil = ubah[p.id] ? { ...p, ...ubah[p.id] } : p
+    if (dokumen[p.id]) hasil = { ...hasil, dokumenDiterima: dokumen[p.id] }
+    return hasil
+  }
+  return [...baru.map(sesuaikan), ...dasar.procurements.map(sesuaikan)]
+})
+
+const pelanggan = memo<Customer[]>(() => {
+  const baru = sesi.customerBaru ?? []
+  const ubah = sesi.ubahCustomer ?? {}
+  if (!baru.length && !ada(ubah)) return dasar.customers
+  return [
+    ...baru.map((c) => (ubah[c.id] ? { ...c, ...ubah[c.id] } : c)),
+    ...dasar.customers.map((c) => (ubah[c.id] ? { ...c, ...ubah[c.id] } : c)),
+  ]
+})
 
 export const dataset: Dataset = {
   ...dasar,
@@ -232,6 +253,9 @@ export const dataset: Dataset = {
   },
   get expenses() {
     return biaya()
+  },
+  get customers() {
+    return pelanggan()
   },
 }
 

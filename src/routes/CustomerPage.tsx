@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ChevronRight, Search, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Search, X } from 'lucide-react'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { IdChip } from '@/components/ui/IdChip'
@@ -13,9 +13,12 @@ import { STATUS_LEAD } from '@/lib/status'
 import { dataset } from '@/data'
 import { daftarCustomer, ringkasanCustomer } from '@/data/agregat-lead'
 import { rupiahRingkas, tanggalPendek } from '@/lib/format'
+import { FormCustomer } from '@/components/app/FormCustomer'
+import type { Customer } from '@/data/types'
 
 export function CustomerPage() {
   const [params, setParams] = useSearchParams()
+  const [formCustomer, setFormCustomer] = useState<{ terbuka: boolean; customer?: Customer }>({ terbuka: false })
   const q = params.get('q') ?? ''
   const sumber = params.get('sumber') ?? 'SEMUA'
   const transaksi = params.get('transaksi') ?? 'SEMUA'
@@ -75,6 +78,14 @@ export function CustomerPage() {
             className="h-7 w-full rounded-control border border-hairline-strong bg-panel pl-7 pr-2 text-xs text-ink placeholder:text-ink-3 hover:bg-sunken focus-visible:bg-panel"
           />
         </label>
+
+        <Button variant="primary" size="sm" ikon={<Plus size={13} />} onClick={() => setFormCustomer({ terbuka: true })}>
+          Tambah customer
+        </Button>
+
+        {formCustomer.terbuka && (
+          <FormCustomer terbuka customer={formCustomer.customer} onTutup={() => setFormCustomer({ terbuka: false })} />
+        )}
 
         <div className="flex flex-wrap items-center gap-1.5">
           <FilterChip aktif={transaksi === 'SEMUA'} onClick={() => atur('transaksi', 'SEMUA')} jumlah={semua.length}>
@@ -184,9 +195,23 @@ export function CustomerPage() {
                   </Td>
                   <Td align="right" className="hidden 2xl:table-cell"><span className="text-2xs text-ink-2">{tanggalPendek(c.sejak)}</span></Td>
                   <Td align="right">
-                    <Link to={`/customer/${c.id}`} aria-label={`Buka customer ${c.id}`} className="inline-flex text-ink-3 hover:text-accent">
-                      <ChevronRight size={15} />
-                    </Link>
+                    <span className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const asli = dataset.customers.find((x) => x.id === c.id)
+                          if (asli) setFormCustomer({ terbuka: true, customer: asli })
+                        }}
+                        aria-label={`Ubah customer ${c.id}`}
+                        title="Ubah data customer"
+                        className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <Link to={`/customer/${c.id}`} aria-label={`Buka customer ${c.id}`} className="inline-flex rounded-control p-1 text-ink-3 hover:bg-sunken hover:text-accent">
+                        <ChevronRight size={15} />
+                      </Link>
+                    </span>
                   </Td>
                 </Baris>
               ))}

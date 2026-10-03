@@ -134,3 +134,33 @@ Berikutnya: F11 deploy ke Vercel.
 
 Pemeriksaan yang dijalankan saat ini: verifier dataset 15 kelompok invariant · lint bersih ·
 QA alur 109 asersi · audit lintas peran ±890 pemeriksaan pada 20 rute × 3 peran + tamu + publik.
+
+---
+
+## Cakupan tombol tambah / ubah / hapus
+
+Demo ini bukan layar baca-saja. Setiap modul operasional punya tombol yang di dunia nyata memang dipakai,
+dan semua tulisan melewati **satu lapisan sesi** (`src/store/sesi.ts`) sehingga angka turunan ikut berubah.
+
+| Modul | Tombol yang tersedia |
+|---|---|
+| Inventory | Tambah unit · Ubah data unit · Ubah tahap (gerbang proses, wajib catatan) |
+| Pembelian | Catat pembelian unit · Ubah harga penawaran/deal · Tandai dokumen penjual diterima |
+| Inspeksi | Isi hasil inspeksi per titik periksa (skor & rekomendasi diturunkan dari temuan) |
+| Reconditioning | Tambah pekerjaan (menambah modal unit) · Tandai selesai |
+| Dokumen | Kelola kelengkapan enam berkas per unit |
+| CRM | Tambah lead · Ubah lead · Pindah tahap |
+| Customer | Tambah customer · Ubah customer |
+| Booking | Buat booking · Ubah DP · Batalkan booking |
+| Penjualan | Catat penjualan · Tandai serah terima |
+| Biaya | Catat biaya · Ubah · Hapus |
+
+**Baca-saja dengan alasan tertulis di layar:** Laporan dan Performa Sales — halaman laporan tidak diisi
+manual, dan layarnya menyatakan itu supaya tidak terbaca sebagai halaman yang belum jadi.
+
+**Batas yang disengaja:** unit yang belum lolos inspeksi/reconditioning tidak punya tombol catat penjualan,
+dan pembelian yang sudah tercatat tidak bisa "dibatalkan" begitu saja — membatalkan pembelian unit yang
+sudah ada di inventory akan menciptakan keadaan yang mustahil. Batas ini ditegakkan, bukan dihilangkan.
+
+Semua perubahan hidup di tab ini (sessionStorage), tampil di spanduk sesi di atas setiap halaman, dan bisa
+dikembalikan dengan satu tombol **Kembalikan ke data demo**.
