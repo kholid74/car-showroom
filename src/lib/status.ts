@@ -9,9 +9,9 @@ import type { HasilInspeksi, LeadStatus, StatusDokumen, UnitStatus } from '@/dat
 export const STATUS_UNIT: Record<UnitStatus, { label: string; pil: string; halus: string; dot: string; urut: number }> = {
   'BARU MASUK': { label: 'Baru Masuk', pil: 'bg-st-baru text-white', halus: 'bg-st-baru/10 text-st-baru', dot: 'bg-st-baru', urut: 1 },
   INSPEKSI: { label: 'Inspeksi', pil: 'bg-st-inspeksi text-white', halus: 'bg-st-inspeksi/10 text-st-inspeksi', dot: 'bg-st-inspeksi', urut: 2 },
-  RECONDITIONING: { label: 'Reconditioning', pil: 'bg-st-recon text-white', halus: 'bg-st-recon/10 text-st-recon', dot: 'bg-st-recon', urut: 3 },
-  READY: { label: 'Ready', pil: 'bg-st-ready text-white', halus: 'bg-st-ready/10 text-st-ready', dot: 'bg-st-ready', urut: 4 },
-  BOOKED: { label: 'Booked', pil: 'bg-st-booked text-white', halus: 'bg-st-booked/10 text-st-booked', dot: 'bg-st-booked', urut: 5 },
+  RECONDITIONING: { label: 'Perbaikan', pil: 'bg-st-recon text-white', halus: 'bg-st-recon/10 text-st-recon', dot: 'bg-st-recon', urut: 3 },
+  READY: { label: 'Siap Jual', pil: 'bg-st-ready text-white', halus: 'bg-st-ready/10 text-st-ready', dot: 'bg-st-ready', urut: 4 },
+  BOOKED: { label: 'Dipesan', pil: 'bg-st-booked text-white', halus: 'bg-st-booked/10 text-st-booked', dot: 'bg-st-booked', urut: 5 },
   SOLD: { label: 'Terjual', pil: 'bg-st-sold text-white', halus: 'bg-st-sold/10 text-st-sold', dot: 'bg-st-sold', urut: 6 },
 }
 

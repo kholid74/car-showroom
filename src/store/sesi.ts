@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { DEMO_TODAY } from '@/data/meta'
+import raw from '@/data/dataset.json'
 import type {
   Booking,
   Customer,
@@ -11,6 +12,7 @@ import type {
   LeadStatus,
   Procurement,
   ReconItem,
+  Reconditioning,
   Sale,
   SumberLead,
   SumberUnit,
@@ -50,6 +52,7 @@ export interface CatatanSesi {
     | 'Customer'
     | 'Pembelian'
   ringkas: string
+  vehicleId?: string
 }
 
 export interface MasukanPenjualan {
@@ -204,6 +207,7 @@ interface KeadaanSesi {
   leadKatalog: Lead[]
   ubahLead: Record<string, Partial<Lead>>
   penjualanBaru: Sale[]
+  ubahPenjualan: Record<string, Partial<Sale>>
   bookingSelesai: string[]
   unitBaru: Vehicle[]
   procurementBaru: Procurement[]
@@ -217,6 +221,7 @@ interface KeadaanSesi {
   bookingBaru: Booking[]
   ubahBooking: Record<string, Partial<Booking>>
   bookingDibatalkan: string[]
+  reconBaru: Reconditioning[]
   reconItemBaru: Record<string, ReconItem[]>
   ubahPekerjaan: Record<string, Partial<ReconItem>>
   reconSelesai: string[]
@@ -234,6 +239,7 @@ interface KeadaanSesi {
   ubahDataUnit: (vehicleId: string, patch: Partial<Vehicle>, label: string) => void
   ubahDokumenUnit: (vehicleId: string, nama: string, status: string, nomor: string, label: string) => void
   catatPenjualan: (masukan: MasukanPenjualan) => Sale
+  lunasiPenjualan: (saleId: string, vehicleId: string, label: string, sisa: number) => void
   tambahBiaya: (masukan: MasukanBiaya) => Expense
   ubahDataBiaya: (id: string, patch: Partial<Expense>, label: string) => void
   hapusBiaya: (id: string, label: string) => void
@@ -256,8 +262,8 @@ interface KeadaanSesi {
   reset: () => void
 }
 
-const catat = (s: CatatanSesi[], jenis: CatatanSesi['jenis'], ringkas: string): CatatanSesi[] => [
-  { id: `SESI-${jenis}-${s.length + 1}-${Date.now()}`, waktu: new Date().toISOString(), jenis, ringkas },
+const catat = (s: CatatanSesi[], jenis: CatatanSesi['jenis'], ringkas: string, vehicleId?: string): CatatanSesi[] => [
+  { id: `SESI-${jenis}-${s.length + 1}-${Date.now()}`, waktu: `${DEMO_TODAY}T${new Date().toISOString().slice(11)}`, jenis, ringkas, vehicleId },
   ...s,
 ].slice(0, 60)
 
@@ -274,6 +280,7 @@ export const useSesi = create<KeadaanSesi>()(
       leadKatalog: [],
       ubahLead: {},
       penjualanBaru: [],
+      ubahPenjualan: {},
       bookingSelesai: [],
       unitBaru: [],
       procurementBaru: [],
@@ -287,6 +294,7 @@ export const useSesi = create<KeadaanSesi>()(
       bookingBaru: [],
       ubahBooking: {},
       bookingDibatalkan: [],
+      reconBaru: [],
       reconItemBaru: {},
       ubahPekerjaan: {},
       reconSelesai: [],
@@ -297,21 +305,45 @@ export const useSesi = create<KeadaanSesi>()(
       ubahCustomer: {},
 
       ubahStatusUnit: (vehicleId, ke, catatanTahap, label) =>
-        set((s) => ({
-          versi: s.versi + 1,
-          statusUnit: { ...s.statusUnit, [vehicleId]: ke },
-          catatanTahap: catatanTahap ? { ...s.catatanTahap, [vehicleId]: catatanTahap } : s.catatanTahap,
-          // unit yang baru siap dijual mulai dihitung umurnya dari hari demo
-          tanggalSiap: ke === 'READY' ? { ...s.tanggalSiap, [vehicleId]: DEMO_TODAY } : s.tanggalSiap,
-          catatan: catat(s.catatan, 'Status unit', `${label} → ${ke}${catatanTahap ? ` · ${catatanTahap}` : ''}`),
-        })),
+        set((s) => {
+          const ubahTahap = catat(s.catatan, 'Status unit', `${label} → ${ke}${catatanTahap ? ` · ${catatanTahap}` : ''}`, vehicleId)
+          // Unit yang masuk tahap perbaikan selalu punya catatan reconditioning sendiri. Tanpa ini,
+          // unit yang dimasukkan lewat sesi demo bisa melewati tahap Perbaikan tanpa jejak pekerjaan
+          // dan tidak pernah muncul di modul Perbaikan.
+          const sudahAdaCatatan =
+            raw.reconditionings.some((r) => r.vehicleId === vehicleId) ||
+            s.reconBaru.some((r) => r.vehicleId === vehicleId)
+          const mulaiRecon = ke === 'RECONDITIONING' && !sudahAdaCatatan
+          const recon: Reconditioning = {
+            id: nomorUrut('RCN-SESI-', s.reconBaru.length),
+            vehicleId,
+            vendorUtama: 'Belum ditentukan',
+            pic: [...s.unitBaru, ...raw.vehicles].find((v) => v.id === vehicleId)?.salesPIC ?? 'Tim showroom',
+            mulai: DEMO_TODAY,
+            selesai: null,
+            status: 'IN PROGRESS',
+            total: 0,
+            items: [],
+          }
+          return {
+            versi: s.versi + 1,
+            statusUnit: { ...s.statusUnit, [vehicleId]: ke },
+            catatanTahap: catatanTahap ? { ...s.catatanTahap, [vehicleId]: catatanTahap } : s.catatanTahap,
+            // unit yang baru siap dijual mulai dihitung umurnya dari hari demo
+            tanggalSiap: ke === 'READY' ? { ...s.tanggalSiap, [vehicleId]: DEMO_TODAY } : s.tanggalSiap,
+            reconBaru: mulaiRecon ? [recon, ...s.reconBaru] : s.reconBaru,
+            catatan: mulaiRecon
+              ? catat(ubahTahap, 'Reconditioning', `Catatan perbaikan ${label} dibuat otomatis`, vehicleId)
+              : ubahTahap,
+          }
+        }),
 
       pindahkanLead: (leadId, dari, ke, label) =>
         set((s) => ({
           versi: s.versi + 1,
           tahapLead: { ...s.tahapLead, [leadId]: ke },
           riwayatLead: [{ leadId, dari, ke, waktu: new Date().toISOString() }, ...s.riwayatLead].slice(0, 60),
-          catatan: catat(s.catatan, 'Tahap lead', `${label} ${dari} → ${ke}`),
+          catatan: catat(s.catatan, 'Tahap lead', `${label} ${dari} → ${ke}`, [...s.leadBaru, ...s.leadKatalog, ...raw.leads].find(l => l.id === leadId)?.vehicleId),
         })),
 
       tambahLead: (m, asal = 'ERP') => {
@@ -355,6 +387,7 @@ export const useSesi = create<KeadaanSesi>()(
             s.catatan,
             'Lead',
             `${lead.nama} · ${lead.vehicleLabel}${dariKatalog ? ' (katalog publik)' : ''}`,
+            m.vehicleId,
           ),
         }))
         return lead
@@ -440,7 +473,7 @@ export const useSesi = create<KeadaanSesi>()(
           unitBaru: [unit, ...s.unitBaru],
           procurementBaru: [procurement, ...s.procurementBaru],
           dokumenBaru: [dokumen, ...s.dokumenBaru],
-          catatan: catat(s.catatan, 'Unit baru', `${unit.brand} ${unit.model} ${unit.tahun} · modal ${totalCost.toLocaleString('id-ID')}`),
+          catatan: catat(s.catatan, 'Unit baru', `${unit.brand} ${unit.model} ${unit.tahun} · modal ${totalCost.toLocaleString('id-ID')}`, unit.id),
         }))
         return unit
       },
@@ -449,7 +482,7 @@ export const useSesi = create<KeadaanSesi>()(
         set((s) => ({
           versi: s.versi + 1,
           ubahUnit: { ...s.ubahUnit, [vehicleId]: { ...s.ubahUnit[vehicleId], ...patch } },
-          catatan: catat(s.catatan, 'Ubah unit', `${label} diperbarui (${Object.keys(patch).join(', ')})`),
+          catatan: catat(s.catatan, 'Ubah unit', `${label} diperbarui (${Object.keys(patch).join(', ')})`, vehicleId),
         })),
 
       ubahDokumenUnit: (vehicleId, nama, status, nomor, label) =>
@@ -462,15 +495,21 @@ export const useSesi = create<KeadaanSesi>()(
               [nama]: { status, nomor: nomor.trim() ? nomor.trim() : null },
             },
           },
-          catatan: catat(s.catatan, 'Dokumen', `${label} · ${nama} → ${status}`),
+          catatan: catat(s.catatan, 'Dokumen', `${label} · ${nama} → ${status}`, vehicleId),
         })),
 
       catatPenjualan: (m) => {
+        const booking = [...get().bookingBaru, ...raw.bookings].find((b) => b.id === m.bookingId)
+        const customerId = m.customerId || get().tambahCustomer({
+          nama: m.customerNama, telepon: '', email: '', kota: '', alamat: '', sumberLead: 'Walk-in',
+          salesPIC: m.salesPIC, budget: m.finalPrice, preferensiPembayaran: m.tipePembayaran,
+          pekerjaan: '', catatan: 'Dibuat dari transaksi penjualan.',
+        }).id
         const sisaPembayaran = Math.max(0, m.finalPrice - m.dp)
         const penjualan: Sale = {
           id: nomorUrut('INV-SESI-', get().penjualanBaru.length),
           vehicleId: m.vehicleId,
-          customerId: m.customerId,
+          customerId,
           customerNama: m.customerNama,
           salesPIC: m.salesPIC,
           tanggal: m.tanggal,
@@ -495,15 +534,33 @@ export const useSesi = create<KeadaanSesi>()(
           versi: s.versi + 1,
           penjualanBaru: [penjualan, ...s.penjualanBaru],
           statusUnit: { ...s.statusUnit, [m.vehicleId]: 'SOLD' },
+          tahapLead: booking?.leadId ? { ...s.tahapLead, [booking.leadId]: 'WON' } : s.tahapLead,
           bookingSelesai: m.bookingId ? [...s.bookingSelesai, m.bookingId] : s.bookingSelesai,
           catatan: catat(
             s.catatan,
             'Penjualan',
             `${m.vehicleLabel} terjual ${m.finalPrice.toLocaleString('id-ID')} (${m.tipePembayaran})`,
+            m.vehicleId,
           ),
         }))
         return penjualan
       },
+
+      lunasiPenjualan: (saleId, vehicleId, label, sisa) =>
+        set((s) => ({
+          versi: s.versi + 1,
+          // pelunasan adalah perubahan pada transaksi yang sudah ada, bukan transaksi baru
+          ubahPenjualan: {
+            ...s.ubahPenjualan,
+            [saleId]: { ...s.ubahPenjualan[saleId], sisaPembayaran: 0, status: 'LUNAS' },
+          },
+          catatan: catat(
+            s.catatan,
+            'Penjualan',
+            `Pelunasan ${label} · sisa ${sisa.toLocaleString('id-ID')} diterima`,
+            vehicleId,
+          ),
+        })),
 
       tambahBiaya: (m) => {
         const biaya: Expense = {
@@ -541,19 +598,26 @@ export const useSesi = create<KeadaanSesi>()(
         })),
 
       buatBooking: (m) => {
+        const lead = [...get().leadBaru, ...get().leadKatalog, ...raw.leads].find((l) => l.id === m.leadId)
+        const customerId = m.customerId || lead?.customerId || get().tambahCustomer({
+          nama: m.customerNama, telepon: lead?.telepon ?? '', email: '', kota: '', alamat: '',
+          sumberLead: (lead?.sumber ?? 'Walk-in') as SumberLead, salesPIC: m.salesPIC,
+          budget: m.hargaKesepakatan, preferensiPembayaran: m.tipePembayaran, pekerjaan: '',
+          catatan: 'Dibuat dari booking kendaraan.',
+        }).id
         const sisa = Math.max(0, m.hargaKesepakatan - m.dp)
         const booking: Booking = {
           id: nomorUrut('BKG-SESI-', get().bookingBaru.length),
           vehicleId: m.vehicleId,
           leadId: m.leadId,
-          customerId: m.customerId,
+          customerId,
           customerNama: m.customerNama.trim(),
           salesPIC: m.salesPIC,
           tanggalBooking: m.tanggalBooking,
           kadaluarsa: m.kadaluarsa,
           dp: m.dp,
           sisaPembayaran: sisa,
-          statusPembayaran: m.dp > 0 ? 'DP DIBAYAR' : 'MENUNGGU PEMBAYARAN',
+          statusPembayaran: sisa === 0 ? 'LUNAS' : m.dp > 0 ? 'DP DIBAYAR' : 'MENUNGGU PEMBAYARAN',
           tipePembayaran: m.tipePembayaran,
           catatan:
             m.catatan.trim() ||
@@ -564,10 +628,13 @@ export const useSesi = create<KeadaanSesi>()(
           bookingBaru: [booking, ...s.bookingBaru],
           // unit yang dibooking keluar dari stok siap jual
           statusUnit: { ...s.statusUnit, [m.vehicleId]: 'BOOKED' },
+          tahapLead: m.leadId ? { ...s.tahapLead, [m.leadId]: 'BOOKED' } : s.tahapLead,
+          ubahLead: m.leadId ? { ...s.ubahLead, [m.leadId]: { ...s.ubahLead[m.leadId], customerId } } : s.ubahLead,
           catatan: catat(
             s.catatan,
             'Booking',
             `${booking.customerNama} · ${m.vehicleLabel} · DP ${m.dp.toLocaleString('id-ID')}`,
+            m.vehicleId,
           ),
         }))
         return booking
@@ -657,6 +724,7 @@ export const useSesi = create<KeadaanSesi>()(
             s.catatan,
             'Inspeksi',
             `${m.vehicleLabel} · skor ${inspeksi.skor} (${good} baik · ${attention} perhatian · ${repair} perbaikan)`,
+            m.vehicleId,
           ),
         }))
         return inspeksi
@@ -736,6 +804,7 @@ export const useSesi = create<KeadaanSesi>()(
           leadKatalog: [],
           ubahLead: {},
           penjualanBaru: [],
+          ubahPenjualan: {},
           bookingSelesai: [],
           unitBaru: [],
           procurementBaru: [],
@@ -749,6 +818,7 @@ export const useSesi = create<KeadaanSesi>()(
           bookingBaru: [],
           ubahBooking: {},
           bookingDibatalkan: [],
+          reconBaru: [],
           reconItemBaru: {},
           ubahPekerjaan: {},
           reconSelesai: [],
@@ -778,6 +848,7 @@ export const jumlahPerubahan = (s: KeadaanSesi) =>
   s.leadBaru.length +
   s.leadKatalog.length +
   s.penjualanBaru.length +
+  Object.keys(s.ubahPenjualan).length +
   s.unitBaru.length +
   s.biayaBaru.length +
   s.biayaDihapus.length +
@@ -787,6 +858,7 @@ export const jumlahPerubahan = (s: KeadaanSesi) =>
   Object.keys(s.ubahBooking).length +
   Object.values(s.reconItemBaru).reduce((n, x) => n + x.length, 0) +
   Object.keys(s.ubahPekerjaan).length +
+  s.reconBaru.length +
   s.reconSelesai.length +
   s.inspeksiBaru.length +
   Object.keys(s.ubahProcurement).length +
@@ -798,6 +870,7 @@ export const jumlahPerubahan = (s: KeadaanSesi) =>
 export function ringkasPerubahan(s: KeadaanSesi): string {
   const bagian: string[] = []
   if (s.penjualanBaru.length) bagian.push(`${s.penjualanBaru.length} penjualan dicatat`)
+  if (Object.keys(s.ubahPenjualan).length) bagian.push(`${Object.keys(s.ubahPenjualan).length} transaksi dilunasi`)
   if (s.unitBaru.length) bagian.push(`${s.unitBaru.length} unit baru dimasukkan`)
   if (s.leadBaru.length) bagian.push(`${s.leadBaru.length} lead baru ditambahkan`)
   if (s.leadKatalog.length) bagian.push(`${s.leadKatalog.length} lead baru dari katalog publik`)
@@ -814,6 +887,7 @@ export function ringkasPerubahan(s: KeadaanSesi): string {
   if (s.bookingDibatalkan.length) bagian.push(`${s.bookingDibatalkan.length} booking dibatalkan`)
   if (Object.values(s.reconItemBaru).reduce((n, x) => n + x.length, 0))
     bagian.push(`${Object.values(s.reconItemBaru).reduce((n, x) => n + x.length, 0)} pekerjaan reconditioning ditambahkan`)
+  if (s.reconBaru.length) bagian.push(`${s.reconBaru.length} catatan perbaikan dibuat`)
   if (s.reconSelesai.length) bagian.push(`${s.reconSelesai.length} reconditioning ditandai selesai`)
   if (s.inspeksiBaru.length) bagian.push(`${s.inspeksiBaru.length} hasil inspeksi dicatat`)
   if (Object.keys(s.ubahProcurement).length) bagian.push(`${Object.keys(s.ubahProcurement).length} data pembelian diperbarui`)

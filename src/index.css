@@ -52,6 +52,18 @@
 }
 
 @layer components {
+  .app-sidebar {
+    background: #17272c;
+    --color-ink: #f7f9f9;
+    --color-ink-2: #d1dde0;
+    --color-ink-3: #a1b5bb;
+    --color-hairline: #304248;
+    --color-sunken: #243a42;
+    --color-accent: #e9c49a;
+    --color-accent-soft: #30454b;
+  }
+  .showcase-kpis { border-radius: var(--radius-panel); overflow: hidden; }
+  .showcase-kpis > :first-child { background: #eaf1f1; }
   /* Label kecil huruf besar — tracking wajib */
   .label-caps {
     font-size: var(--text-2xs);

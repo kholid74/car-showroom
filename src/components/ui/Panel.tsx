@@ -24,7 +24,7 @@ export function Panel({
       {(judul || aksi) && (
         <header className="flex items-start justify-between gap-4 border-b border-hairline px-4 py-3">
           <div className="min-w-0">
-            {judul && <h2 className="text-xs font-semibold tracking-tight text-ink">{judul}</h2>}
+            {judul && <h2 className="text-sm font-semibold tracking-tight text-ink">{judul}</h2>}
             {keterangan && <p className="mt-0.5 text-2xs text-ink-3">{keterangan}</p>}
           </div>
           {aksi && <div className="flex shrink-0 items-center gap-2">{aksi}</div>}

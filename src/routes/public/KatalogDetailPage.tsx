@@ -243,14 +243,13 @@ export function KatalogDetailPage() {
                   <span className="text-ink">{tanggalPendek(hasil.followUp)}</span> ({jarakHari(hasil.followUp, DEMO_TODAY)}).
                 </p>
                 <p className="mt-2 text-2xs leading-relaxed text-ink-3">
-                  Demo ini tidak punya backend: lead disimpan di tab browser ini (bertahan meski halaman dimuat ulang,
-                  hilang saat tab ditutup) dan tidak dikirim ke server mana pun.
+                  Lanjutkan ke ruang kerja showroom untuk mencoba tindak lanjut lead ini.
                 </p>
                 <Link
                   to="/crm"
                   className="mt-2 inline-flex items-center gap-1 text-2xs font-medium text-accent hover:underline"
                 >
-                  Lihat lead di CRM (perlu masuk sebagai sales/owner) <ChevronRight size={12} />
+                  Lanjutkan ke CRM <ChevronRight size={12} />
                 </Link>
               </div>
             ) : (
@@ -320,14 +319,13 @@ export function KatalogDetailPage() {
                 ikon={<MessageCircle size={14} />}
                 onClick={() => setCatatanWa(true)}
               >
-                Hubungi via WhatsApp
+                Pratinjau pesan WhatsApp
               </Button>
 
               {catatanWa && (
                 <p className="rounded-control border border-attention/30 bg-attention/5 p-2 text-2xs leading-relaxed text-ink-2">
-                  Nomor WhatsApp showroom sengaja tidak diisi pada data demo ini — kami tidak menampilkan nomor
-                  karangan. Kirim minat lewat formulir di atas; di sistem nyata tombol ini membuka percakapan WhatsApp
-                  yang tercatat otomatis sebagai lead.
+                  “Halo, saya tertarik dengan {unit.brand} {unit.model}. Apakah saya bisa melihat unit dan menjadwalkan test drive?”
+                  <span className="mt-2 block text-ink-3">Pratinjau demo. Gunakan formulir minat untuk mencoba alur ke tim sales.</span>
                 </p>
               )}
             </div>

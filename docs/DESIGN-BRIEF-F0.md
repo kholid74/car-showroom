@@ -1,6 +1,15 @@
 # car-showroom — F0 Design Brief
 **Showroom / Used-Car Dealer Management System — showcase frontend untuk Kalsara Digital Studio**
-Status: **menunggu keputusan arah visual (A / B / C)** · Tanggal: 3 Okt 2026
+Status: **direvisi 5 Okt 2026 setelah audit dan permintaan pembenahan showcase**.
+
+## Revisi implementasi 5 Oktober 2026
+
+Arah awal di bawah adalah catatan historis. Untuk pengalaman demo, keputusan terbaru memakai navigasi gelap, area kerja terang, judul halaman lebih kuat, foto ilustrasi kendaraan lokal, kartu inventory sebagai tampilan awal, dan CTA dashboard untuk menelusuri satu unit. Aturan lama tanpa fotografi dan placeholder katalog tidak berlaku. Foto bersumber dari Wikimedia Commons; atribusi tersedia pada /photo-credits.html. Data dan komponen existing tetap dipakai.
+
+Skenario regresi utama: katalog satu tab → inquiry → pindah tahap CRM → booking → penjualan, dengan identitas pelanggan, harga kesepakatan, status, dan timeline yang mengikuti perubahan. Jalankan scripts/verify-showcase.cjs dengan Playwright tersedia melalui NODE_PATH.
+
+Skenario proses unit: Baru Masuk → Inspeksi → Perbaikan → Siap Jual dengan gerbang yang menuntut hasil inspeksi dan perbaikan yang selesai (catatan perbaikan dibuat otomatis saat unit masuk tahap Perbaikan), ditambah pelunasan piutang dari halaman Keuangan. Jalankan scripts/uji-alur-proses.cjs dengan cara yang sama.
+
 
 ---
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ExternalLink, LogOut, Menu, X, CircleAlert, RotateCcw } from 'lucide-react'
+import { ExternalLink, LogOut, Menu, X, CircleAlert, RotateCcw, Car } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { jumlahPerubahan, ringkasPerubahan, useSesi } from '@/store/sesi'
 import { PencarianGlobal } from '@/components/app/PencarianGlobal'
@@ -33,8 +33,8 @@ function IsiSidebar({
   return (
     <>
       <div className="border-b border-hairline px-4 py-3">
-        <p className="text-xs font-semibold tracking-tight text-ink">{dataset.meta.namaShowroom}</p>
-        <p className="mt-0.5 text-2xs text-ink-3">Sistem manajemen showroom · demo</p>
+        <div className="flex items-center gap-3 py-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white"><Car size={23} /></span><div><p className="text-base font-semibold tracking-tight text-ink">Kalsara Motor<span className="text-[#e2b98c]">.</span></p>
+        <p className="mt-0.5 text-[10px] tracking-[0.18em] text-ink-3">RUANG KERJA SHOWROOM</p></div></div>
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label="Navigasi utama">
@@ -50,7 +50,7 @@ function IsiSidebar({
                     onClick={onPilih}
                     className={({ isActive }) =>
                       [
-                        'group relative flex h-8 items-center gap-2 rounded-control px-2 text-xs transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]',
+                        'group relative flex h-10 items-center gap-3 rounded-control px-3 text-xs transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]',
                         isActive
                           ? 'bg-accent-soft font-medium text-accent'
                           : 'text-ink-2 hover:bg-sunken hover:text-ink',
@@ -78,8 +78,6 @@ function IsiSidebar({
       <div className={`border-t border-hairline ${ringkas ? 'px-3 py-2' : 'px-4 py-3'}`}>
         <a
           href="/katalog"
-          target="_blank"
-          rel="noreferrer"
           className="inline-flex items-center gap-1.5 text-2xs font-medium text-accent hover:underline"
         >
           <ExternalLink size={12} />
@@ -87,7 +85,7 @@ function IsiSidebar({
         </a>
         {!ringkas && (
           <p className="mt-1 text-2xs leading-relaxed text-ink-3">
-            Halaman yang dilihat calon pembeli — minat dari sana masuk ke CRM sebagai lead baru.
+            Jelajahi stok dan coba kirim minat ke tim sales.
           </p>
         )}
       </div>
@@ -157,7 +155,7 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-canvas">
       {/* ---------------- Sidebar tetap: hanya layar lebar ---------------- */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-hairline bg-panel md:flex">
+      <aside className="app-sidebar sticky top-0 hidden h-screen w-60 shrink-0 flex-col md:flex">
         <IsiSidebar grup={grup} />
       </aside>
 
@@ -170,7 +168,7 @@ export function AppShell() {
             onClick={tutupMenu}
             className="absolute inset-0 h-full w-full cursor-default bg-ink/30"
           />
-          <div className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85%] flex-col border-r border-hairline bg-panel shadow-drawer">
+          <div className="app-sidebar absolute inset-y-0 left-0 flex w-[280px] max-w-[85%] flex-col shadow-drawer">
             <button
               ref={refTombolTutup}
               type="button"
@@ -187,7 +185,7 @@ export function AppShell() {
 
       {/* ---------------- Area utama ---------------- */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-2 border-b border-hairline bg-panel px-3 md:gap-4 md:px-5">
+        <header className="sticky top-0 z-10 flex min-h-20 items-center justify-between gap-2 border-b border-hairline bg-panel/95 px-3 backdrop-blur md:gap-4 md:px-7">
           <div className="flex min-w-0 items-center gap-2">
             <button
               ref={refTombolMenu}
@@ -201,7 +199,7 @@ export function AppShell() {
             </button>
 
             <div className="min-w-0">
-              <h1 className="truncate text-xs font-semibold tracking-tight text-ink">{judul}</h1>
+              <h1 className="truncate text-base font-semibold tracking-tight text-ink md:text-xl">{judul}</h1>
               <p className="truncate text-2xs text-ink-3">{keterangan}</p>
             </div>
           </div>
@@ -261,8 +259,7 @@ export function AppShell() {
                 <CircleAlert size={13} className="mt-0.5 shrink-0 text-attention" />
                 <span>
                   <span className="font-medium text-ink">{jumlahUbah} perubahan pada sesi ini</span>
-                  {ringkasPerubahan(sesi) ? ` — ${ringkasPerubahan(sesi)}` : ''}. Demo ini tanpa backend: perubahan
-                  hidup di tab ini dan hilang saat tab ditutup, tetapi seluruh angka di semua modul ikut menyesuaikan.
+                  {ringkasPerubahan(sesi) ? ` — ${ringkasPerubahan(sesi)}` : ''}.
                 </span>
               </p>
               <Button variant="secondary" size="sm" onClick={sesi.reset} ikon={<RotateCcw size={13} />}>
@@ -272,12 +269,12 @@ export function AppShell() {
           </div>
         )}
 
-        <main key={sesi.versi} className="min-w-0 flex-1 px-4 py-4 md:px-5 md:py-5">
+        <main key={sesi.versi} className="min-w-0 flex-1 px-4 py-5 md:px-7 md:py-7">
           <Outlet />
         </main>
 
         <footer className="border-t border-hairline px-4 py-3 md:px-5">
-          <p className="text-2xs text-ink-3">{dataset.meta.catatan}</p>
+          <p className="text-2xs text-ink-3">Kalsara Digital Studio · Mode demo · Data contoh <a href="/photo-credits.html" className="ml-2 underline">Kredit foto</a></p>
         </footer>
       </div>
     </div>

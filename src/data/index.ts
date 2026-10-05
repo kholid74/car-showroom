@@ -59,7 +59,10 @@ const tambahanRecon = memo<Record<string, number>>(() => {
   if (!ada(baru)) return {}
   const peta: Record<string, number> = {}
   for (const [reconId, items] of Object.entries(baru)) {
-    const rec = dasar.reconditionings.find((r) => r.id === reconId)
+    // catatan perbaikan bisa berasal dari dataset dasar atau dibuat pada sesi demo
+    const rec =
+      dasar.reconditionings.find((r) => r.id === reconId) ??
+      (sesi.reconBaru ?? []).find((r) => r.id === reconId)
     if (!rec) continue
     peta[rec.vehicleId] = (peta[rec.vehicleId] ?? 0) + items.reduce((n, x) => n + x.biaya, 0)
   }
@@ -112,15 +115,19 @@ const lead = memo<Lead[]>(() => {
         })
       : dasar.leads
 
-  const tambahan = [...(sesi.leadBaru ?? []), ...(sesi.leadKatalog ?? [])].map((l) =>
-    ubah[l.id] ? { ...l, ...ubah[l.id] } : l,
-  )
+  const tambahan = [...(sesi.leadBaru ?? []), ...(sesi.leadKatalog ?? [])].map((l) => ({
+    ...l, ...ubah[l.id], ...(tahap[l.id] ? { status: tahap[l.id] } : {}),
+  }))
   return tambahan.length ? [...tambahan, ...dasarDisesuaikan] : dasarDisesuaikan
 })
 
-const penjualan = memo<Sale[]>(() =>
-  (sesi.penjualanBaru ?? []).length ? [...sesi.penjualanBaru, ...dasar.sales] : dasar.sales,
-)
+const penjualan = memo<Sale[]>(() => {
+  const baru = sesi.penjualanBaru ?? []
+  const ubah = sesi.ubahPenjualan ?? {}
+  if (!baru.length && !ada(ubah)) return dasar.sales
+  // pelunasan piutang mengubah transaksi yang sudah ada — termasuk transaksi bawaan dataset
+  return [...baru, ...dasar.sales].map((s) => (ubah[s.id] ? { ...s, ...ubah[s.id] } : s))
+})
 
 const pemesanan = memo<Booking[]>(() => {
   const selesai = sesi.bookingSelesai ?? []
@@ -129,15 +136,13 @@ const pemesanan = memo<Booking[]>(() => {
   const baru = sesi.bookingBaru ?? []
   if (!selesai.length && !ada(ubah) && !batal.length && !baru.length) return dasar.bookings
 
-  const dasarDisesuaikan = dasar.bookings
+  return [...baru, ...dasar.bookings]
     .filter((b) => !batal.includes(b.id))
     .map((b) => {
       let hasil = ubah[b.id] ? { ...b, ...ubah[b.id] } : b
       if (selesai.includes(hasil.id)) hasil = { ...hasil, statusPembayaran: 'SELESAI' }
       return hasil
     })
-  const tambahan = baru.filter((b) => !batal.includes(b.id)).map((b) => (ubah[b.id] ? { ...b, ...ubah[b.id] } : b))
-  return [...tambahan, ...dasarDisesuaikan]
 })
 
 const dokumen = memo<VehicleDocuments[]>(() => {
@@ -145,7 +150,7 @@ const dokumen = memo<VehicleDocuments[]>(() => {
   const baru = sesi.dokumenBaru ?? []
   if (!ada(perubahan) && !baru.length) return dasar.documents
 
-  const dasarDisesuaikan = dasar.documents.map((d) => {
+  return [...baru, ...dasar.documents].map((d) => {
     const ubahan = perubahan[d.vehicleId]
     if (!ubahan) return d
     return {
@@ -155,16 +160,17 @@ const dokumen = memo<VehicleDocuments[]>(() => {
       ),
     }
   })
-  return [...baru, ...dasarDisesuaikan]
 })
 
 const perawatan = memo<Reconditioning[]>(() => {
   const baru = sesi.reconItemBaru ?? {}
   const ubah = sesi.ubahPekerjaan ?? {}
   const selesai = sesi.reconSelesai ?? []
-  if (!ada(baru) && !ada(ubah) && !selesai.length) return dasar.reconditionings
+  const buatan = sesi.reconBaru ?? []
+  if (!ada(baru) && !ada(ubah) && !selesai.length && !buatan.length) return dasar.reconditionings
 
-  return dasar.reconditionings.map((r) => {
+  // catatan perbaikan buatan sesi diperlakukan sama seperti catatan bawaan dataset
+  return [...buatan, ...dasar.reconditionings].map((r) => {
     const items = [...r.items, ...(baru[r.id] ?? [])].map((it) => {
       const ubahan = ubah[`${r.id}::${it.id}`]
       return ubahan ? { ...it, ...ubahan } : it
@@ -256,6 +262,12 @@ export const dataset: Dataset = {
   },
   get customers() {
     return pelanggan()
+  },
+  get activities() {
+    return [...dasar.activities, ...sesi.catatan.filter((c) => c.vehicleId).map((c) => ({
+      id: c.id, vehicleId: c.vehicleId!, tanggal: c.waktu, tipe: c.jenis,
+      judul: c.jenis, detail: c.ringkas, oleh: 'Tim showroom',
+    }))]
   },
 }
 

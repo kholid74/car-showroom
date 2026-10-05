@@ -5,7 +5,7 @@ import { AksiDialog, BadanDialog, DaftarGalat, Kolom, Masukan, Pilihan } from '@
 import { dataset, DEMO_TODAY } from '@/data'
 import { useSesi } from '@/store/sesi'
 import { rupiahRingkas } from '@/lib/format'
-import type { Booking, TipePembayaran, Vehicle } from '@/data/types'
+import type { Booking, Lead, TipePembayaran, Vehicle } from '@/data/types'
 
 const rupiah = (n: number) => n.toLocaleString('id-ID')
 const geser = (tanggal: string, hari: number) => {
@@ -23,11 +23,13 @@ export function FormBooking({
   onTutup,
   booking,
   unitAwal,
+  leadAwal,
 }: {
   terbuka: boolean
   onTutup: () => void
   booking?: Booking
   unitAwal?: Vehicle
+  leadAwal?: Lead
 }) {
   const buatBooking = useSesi((s) => s.buatBooking)
   const ubahDataBooking = useSesi((s) => s.ubahDataBooking)
@@ -43,8 +45,9 @@ export function FormBooking({
 
   const [isi, setIsi] = useState({
     vehicleId: unitEfektif?.id ?? '',
-    customerNama: booking?.customerNama ?? '',
-    salesPIC: booking?.salesPIC ?? dataset.salesTeam[0]?.nama ?? '',
+    leadId: leadAwal?.id ?? booking?.leadId ?? '',
+    customerNama: booking?.customerNama ?? leadAwal?.nama ?? '',
+    salesPIC: booking?.salesPIC ?? leadAwal?.salesPIC ?? dataset.salesTeam[0]?.nama ?? '',
     tanggalBooking: booking?.tanggalBooking ?? DEMO_TODAY,
     kadaluarsa: booking?.kadaluarsa ?? geser(DEMO_TODAY, 7),
     kesepakatan: String(booking ? booking.dp + booking.sisaPembayaran : (unitEfektif?.listingPrice ?? 0)),
@@ -88,8 +91,8 @@ export function FormBooking({
       buatBooking({
         vehicleId: isi.vehicleId,
         vehicleLabel: unit ? `${unit.brand} ${unit.model} ${unit.tahun}` : isi.vehicleId,
-        leadId: null,
-        customerId: null,
+        leadId: isi.leadId || null,
+        customerId: dataset.leads.find(l => l.id === isi.leadId)?.customerId ?? null,
         customerNama: isi.customerNama.trim(),
         salesPIC: isi.salesPIC,
         tanggalBooking: isi.tanggalBooking,
@@ -122,7 +125,7 @@ export function FormBooking({
           label="Unit"
           petunjuk={unit ? `${unit.id} · ${unit.brand} ${unit.model} ${unit.tahun} · listing ${rupiahRingkas(unit.listingPrice)}` : 'hanya unit berstatus Ready'}
         >
-          <Pilihan value={isi.vehicleId} onChange={(e) => ubah('vehicleId', e.target.value)} disabled={Boolean(booking)}>
+          <Pilihan value={isi.vehicleId} onChange={(e) => { const v = dataset.vehicles.find(v => v.id === e.target.value); setIsi(s => ({ ...s, vehicleId: e.target.value, leadId: '', customerNama: '', kesepakatan: String(v?.listingPrice ?? 0) })) }} disabled={Boolean(booking)}>
             {unitEfektif && !unitUntukBooking.some((v) => v.id === unitEfektif.id) && (
               <option value={unitEfektif.id}>
                 {unitEfektif.id} · {unitEfektif.brand} {unitEfektif.model} ({unitEfektif.status})
@@ -137,6 +140,10 @@ export function FormBooking({
         </Kolom>
 
         <div className="col-span-2 space-y-3">
+          {!booking && <Kolom label="Hubungkan dengan lead"><Pilihan value={isi.leadId} onChange={e => {
+            const l = dataset.leads.find(l => l.id === e.target.value)
+            setIsi(s => ({ ...s, leadId: e.target.value, customerNama: l?.nama ?? '', salesPIC: l?.salesPIC ?? s.salesPIC, tipePembayaran: l?.preferensiPembayaran ?? s.tipePembayaran }))
+          }}><option value="">Pemesan baru / tanpa lead</option>{dataset.leads.filter(l => l.vehicleId === isi.vehicleId && !['WON', 'LOST'].includes(l.status)).map(l => <option key={l.id} value={l.id}>{l.nama} · {l.id}</option>)}</Pilihan></Kolom>}
           <Kolom label="Nama pemesan">
             <Masukan value={isi.customerNama} onChange={(e) => ubah('customerNama', e.target.value)} placeholder="Nama lengkap" disabled={Boolean(booking)} />
           </Kolom>

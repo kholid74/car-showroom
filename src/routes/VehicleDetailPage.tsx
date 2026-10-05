@@ -1,9 +1,10 @@
 import { type ReactNode, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, ArrowRightCircle, Banknote, CalendarClock, ChevronRight, ClipboardCheck, FileText, Handshake,
+  ArrowLeft, ArrowRightCircle, Banknote, CalendarClock, Check, ChevronRight, ClipboardCheck, FileText, Handshake,
   Info, MessageSquare, PackageCheck, Pencil, Receipt, Tag, UserRound, Wallet, Wrench,
 } from 'lucide-react'
+import { VehiclePhoto } from '@/components/ui/VehiclePhoto'
 import { Panel, Baris as BarisKV } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -16,10 +17,12 @@ import {
 } from '@/lib/status'
 import { bundelUnit, customerById, unitTersedia } from '@/data/selectors'
 import { DEMO_TODAY } from '@/data'
-import { TAHAP_UNIT_BERIKUTNYA } from '@/store/sesi'
+import { TAHAP_UNIT_BERIKUTNYA, useSesi } from '@/store/sesi'
 import { FormUnit } from '@/components/app/FormUnit'
 import { FormTahapUnit } from '@/components/app/FormTahapUnit'
 import { FormPenjualan } from '@/components/app/FormPenjualan'
+import { FormPekerjaanRecon } from '@/components/app/FormPekerjaanRecon'
+import { FormInspeksi } from '@/components/app/FormInspeksi'
 import { angka, kilometer, persen, rupiahRingkas, tanggalPanjang, tanggalPendek, jarakHari, jam } from '@/lib/format'
 import type {
   Activity, Booking, Inspection, Interaksi, Lead, Procurement, Reconditioning, Sale, Vehicle, VehicleDocuments,
@@ -58,9 +61,9 @@ export function VehicleDetailPage() {
 
   const TAB: Tab[] = [
     { kunci: 'ringkasan', label: 'Ringkasan', ikon: <Info size={13} /> },
-    { kunci: 'procurement', label: 'Procurement', ikon: <Handshake size={13} /> },
+    { kunci: 'procurement', label: 'Pembelian', ikon: <Handshake size={13} /> },
     { kunci: 'inspeksi', label: 'Inspeksi', ikon: <ClipboardCheck size={13} /> },
-    { kunci: 'reconditioning', label: 'Reconditioning', ikon: <Wrench size={13} />, },
+    { kunci: 'reconditioning', label: 'Perbaikan', ikon: <Wrench size={13} />, },
     { kunci: 'biaya', label: 'Biaya', ikon: <Wallet size={13} /> },
     { kunci: 'lead', label: 'Lead', ikon: <MessageSquare size={13} /> },
     { kunci: 'penjualan', label: 'Penjualan', ikon: <Receipt size={13} /> },
@@ -85,7 +88,7 @@ export function VehicleDetailPage() {
             Kembali ke inventory
           </Link>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight text-ink">
+            <h2 className="text-2xl font-semibold tracking-tight text-ink">
               {unit.brand} {unit.model} {unit.variant}
             </h2>
             <StatusPill label={STATUS_UNIT[unit.status].label} pil={STATUS_UNIT[unit.status].pil} />
@@ -136,7 +139,7 @@ export function VehicleDetailPage() {
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === 'ringkasan' && <TabRingkasan unit={unit} bundel={bundel} pilihTab={pilihTab} />}
             {tab === 'procurement' && <TabProcurement unit={unit} procurement={procurement} />}
-            {tab === 'inspeksi' && <TabInspeksi inspeksi={inspeksi} />}
+            {tab === 'inspeksi' && <TabInspeksi unit={unit} inspeksi={inspeksi} />}
             {tab === 'reconditioning' && <TabReconditioning unit={unit} recon={recon} />}
             {tab === 'biaya' && <TabBiaya unit={unit} recon={recon} penjualan={penjualan} />}
             {tab === 'lead' && <TabLead leads={leads} />}
@@ -189,7 +192,7 @@ function TabBar({
         if (e.key === 'ArrowRight') { e.preventDefault(); geser(1) }
         if (e.key === 'ArrowLeft') { e.preventDefault(); geser(-1) }
       }}
-      className="flex flex-wrap items-center gap-1 border-b border-hairline pb-0"
+      className="flex overflow-x-auto items-center gap-1 border-b border-hairline pb-0"
     >
       {tab2.map((t) => {
         const aktif = tab === t.kunci
@@ -242,7 +245,7 @@ function RelModal({
   const margin = terjual ? penjualan!.grossProfit : unit.estimasiMargin
 
   return (
-    <aside className="space-y-3 xl:sticky xl:top-18 xl:self-start">
+    <aside className="space-y-3 order-first xl:order-last xl:sticky xl:top-24 xl:self-start">
       <section className="border border-hairline bg-panel rounded-panel">
         <header className="border-b border-hairline px-3 py-2.5">
           <p className="label-caps">{terjual ? 'Hasil Akhir Unit Ini' : 'Perhitungan Modal & Margin'}</p>
@@ -271,7 +274,7 @@ function RelModal({
           <div className="mt-2.5 rounded-control bg-money-pos/8 px-2.5 py-2">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-2xs font-medium text-money-pos">
-                {terjual ? 'Gross profit tercatat' : 'Potensi margin'}
+                {terjual ? 'Laba kotor tercatat' : 'Potensi margin'}
               </span>
               <Money nilai={margin} ukuran="lg" nada="positif" />
             </div>
@@ -360,6 +363,11 @@ function TabRingkasan({
 
   return (
     <div className="space-y-4">
+      <VehiclePhoto unit={unit} priority credit className="aspect-[16/8] rounded-panel" />
+      <div className="flex gap-2 overflow-x-auto py-1" aria-label="Tahapan kendaraan">{['Dibeli', 'Inspeksi', 'Perbaikan', 'Siap jual', 'Booking', 'Terjual'].map((label, i) => {
+        const tahap = ['BARU MASUK', 'INSPEKSI', 'RECONDITIONING', 'READY', 'BOOKED', 'SOLD'].indexOf(unit.status)
+        return <span key={label} className={'flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs ' + (i <= tahap ? 'bg-accent-soft text-accent' : 'bg-sunken text-ink-3')}><span className="tnum text-[10px]">0{i + 1}</span>{label}</span>
+      })}</div>
       <Panel judul="Perjalanan unit ini" keterangan={`${aktivitas.length} peristiwa tercatat, dari pembelian sampai kondisi sekarang`} padat>
         <LiniMasa aktivitas={aktivitas} ringkas />
       </Panel>
@@ -609,14 +617,25 @@ function TabProcurement({ unit, procurement }: { unit: Vehicle; procurement?: Pr
 /* ================================================================== */
 /* Tab: Inspeksi                                                       */
 /* ================================================================== */
-function TabInspeksi({ inspeksi }: { inspeksi?: Inspection }) {
+function TabInspeksi({ unit, inspeksi }: { unit: Vehicle; inspeksi?: Inspection }) {
+  const [form, setForm] = useState(false)
+
   if (!inspeksi) {
     return (
-      <Panel judul="Inspeksi">
-        <p className="text-xs text-ink-3">
-          Unit ini belum memiliki hasil inspeksi. Inspeksi dijalankan setelah unit masuk dan sebelum reconditioning.
-        </p>
-      </Panel>
+      <div className="space-y-4">
+        <Panel judul="Inspeksi">
+          <p className="text-xs leading-relaxed text-ink-2">
+            Unit ini belum memiliki hasil inspeksi. Inspeksi dijalankan setelah unit masuk dan sebelum perbaikan —
+            temuannya yang menentukan pekerjaan perbaikan.
+          </p>
+          <div className="border-t border-hairline px-4 py-3">
+            <Button variant="primary" size="sm" ikon={<ClipboardCheck size={13} />} onClick={() => setForm(true)}>
+              Isi hasil inspeksi
+            </Button>
+          </div>
+        </Panel>
+        {form && <FormInspeksi terbuka unit={unit} onTutup={() => setForm(false)} />}
+      </div>
     )
   }
   const total = inspeksi.ringkasan.good + inspeksi.ringkasan.attention + inspeksi.ringkasan.repair
@@ -685,20 +704,31 @@ function TabInspeksi({ inspeksi }: { inspeksi?: Inspection }) {
 /* Tab: Reconditioning                                                 */
 /* ================================================================== */
 function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Reconditioning }) {
+  const selesaikanRecon = useSesi((s) => s.selesaikanRecon)
+  const ubahStatusPekerjaan = useSesi((s) => s.ubahStatusPekerjaan)
+  const [formPekerjaan, setFormPekerjaan] = useState(false)
+  const label = `${unit.brand} ${unit.model} ${unit.tahun}`
+
   if (!recon) {
     return (
-      <Panel judul="Reconditioning">
-        <p className="text-xs text-ink-3">Belum ada pekerjaan reconditioning yang dicatat untuk unit ini.</p>
+      <Panel judul="Perbaikan">
+        <p className="text-xs leading-relaxed text-ink-3">
+          Belum ada catatan perbaikan untuk unit ini. Catatan dibuat otomatis begitu unit masuk tahap Perbaikan —
+          alurnya Inspeksi → Perbaikan → Siap Jual.
+        </p>
       </Panel>
     )
   }
   const totalItem = recon.items.reduce((s, i) => s + i.biaya, 0)
-  const cocok = totalItem === unit.reconCost
+  // Unit yang belum pernah dikerjakan pada data demo membawa perkiraan biaya reconditioning
+  // pada modalnya; selisih ini wajar dan disebut apa adanya, bukan diberi label "tidak cocok".
+  const selisih = unit.reconCost - totalItem
+  const cocok = selisih === 0
 
   return (
     <div className="space-y-4">
       <Panel
-        judul="Pekerjaan reconditioning"
+        judul="Pekerjaan perbaikan"
         keterangan={`${recon.id} · mulai ${tanggalPendek(recon.mulai)}${recon.selesai ? ` · selesai ${tanggalPendek(recon.selesai)}` : ' · masih berjalan'}`}
         padat
         aksi={
@@ -709,9 +739,23 @@ function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Recondition
               dot={STATUS_RECON[recon.status].dot}
             />
             <Money nilai={recon.total} ukuran="lg" nada="kuat" />
+            <Button variant="secondary" size="sm" ikon={<Wrench size={13} />} onClick={() => setFormPekerjaan(true)}>
+              Tambah pekerjaan
+            </Button>
+            {recon.status !== 'COMPLETED' && (
+              <Button variant="primary" size="sm" ikon={<Check size={13} />} onClick={() => selesaikanRecon(recon.id, label)}>
+                Tandai selesai
+              </Button>
+            )}
           </span>
         }
       >
+        {recon.items.length === 0 && (
+          <p className="border-b border-hairline px-4 py-3 text-xs leading-relaxed text-ink-3">
+            Belum ada pekerjaan yang dicatat untuk unit ini. Tambahkan pekerjaan lewat tombol di atas; biayanya
+            menambah modal unit.
+          </p>
+        )}
         <Table minWidth={760}>
           <THead>
             <Th lebar={90}>ID</Th>
@@ -721,6 +765,7 @@ function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Recondition
             <Th className="hidden md:table-cell" lebar={110}>Selesai</Th>
             <Th lebar={140}>Status</Th>
             <Th align="right" lebar={140}>Biaya</Th>
+            <Th align="right" lebar={130}>Tindakan</Th>
           </THead>
           <tbody>
             {recon.items.map((i) => (
@@ -742,6 +787,19 @@ function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Recondition
                   />
                 </Td>
                 <Td align="right"><Money nilai={i.biaya} ukuran="sm" /></Td>
+                <Td align="right">
+                  {i.status === 'COMPLETED' ? (
+                    <span className="text-2xs text-ink-3">Selesai</span>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => ubahStatusPekerjaan(recon.id, i.id, 'COMPLETED', label)}
+                    >
+                      Selesaikan
+                    </Button>
+                  )}
+                </Td>
               </BarisTabel>
             ))}
           </tbody>
@@ -752,8 +810,11 @@ function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Recondition
               <Td />
               <Td className="hidden md:table-cell" />
               <Td className="hidden md:table-cell" />
-              <Td tebal>{cocok ? 'Cocok dengan total modal' : 'Tidak cocok'}</Td>
+              <Td tebal>
+                {cocok ? 'Cocok dengan total modal' : `${rupiahRingkas(selisih)} belum dirinci`}
+              </Td>
               <Td align="right" tebal><Money nilai={unit.reconCost} ukuran="sm" nada="kuat" /></Td>
+              <Td />
             </tr>
           </tfoot>
         </Table>
@@ -761,8 +822,16 @@ function TabReconditioning({ unit, recon }: { unit: Vehicle; recon?: Recondition
 
       <KaitanUnit
         unit={unit}
-        teks={`Total pekerjaan di atas sama dengan komponen reconditioning pada total modal unit (${rupiahRingkas(unit.reconCost)}). Angka ini dipakai di modul Biaya dan laporan profit.`}
+        teks={
+          cocok
+            ? `Total pekerjaan di atas sama dengan komponen reconditioning pada total modal unit (${rupiahRingkas(unit.reconCost)}). Angka ini dipakai di modul Biaya dan laporan profit.`
+            : `Komponen reconditioning pada modal unit ini ${rupiahRingkas(unit.reconCost)}, sedangkan pekerjaan yang sudah dirinci ${rupiahRingkas(totalItem)}. Selisih ${rupiahRingkas(selisih)} berasal dari perkiraan awal saat unit masuk dan belum dipecah per pekerjaan.`
+        }
       />
+
+      {formPekerjaan && (
+        <FormPekerjaanRecon terbuka reconId={recon.id} label={label} onTutup={() => setFormPekerjaan(false)} />
+      )}
     </div>
   )
 }
@@ -1137,8 +1206,8 @@ function ikonTipe(tipe: string) {
   }
 }
 
-function LiniMasa({ aktivitas, ringkas = false }: { aktivitas: Activity[]; ringkas?: boolean }) {
-  const daftar = ringkas ? aktivitas.slice(-6) : aktivitas
+function LiniMasa({ aktivitas }: { aktivitas: Activity[]; ringkas?: boolean }) {
+  const daftar = aktivitas
   return (
     <ol className="px-4 py-3">
       {daftar.map((a, idx) => (

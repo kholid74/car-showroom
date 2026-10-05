@@ -29,11 +29,11 @@ export function FormPenjualan({
 
   const [f, setF] = useState(() => ({
     tanggal: DEMO_TODAY,
-    customerId: dataset.customers[0]?.id ?? '',
-    namaBaru: '',
-    pakaiCustomerBaru: false,
-    salesPIC: unit.salesPIC,
-    final: String(booking ? unit.listingPrice : unit.listingPrice),
+    customerId: booking?.customerId ?? dataset.customers[0]?.id ?? '',
+    namaBaru: booking?.customerNama ?? '',
+    pakaiCustomerBaru: Boolean(booking && !booking.customerId),
+    salesPIC: booking?.salesPIC ?? unit.salesPIC,
+    final: String(booking ? booking.dp + booking.sisaPembayaran : unit.listingPrice),
     dp: String(booking?.dp ?? 0),
     bayar: (booking?.tipePembayaran ?? 'Kredit') as TipePembayaran,
     finance: dataset.financePartners[0] ?? 'Adira Finance',

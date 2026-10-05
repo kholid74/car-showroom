@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Panel } from '@/components/ui/Panel'
+import { VehiclePhoto } from '@/components/ui/VehiclePhoto'
 import { Money, Angka } from '@/components/ui/Money'
 import { SelRingkas } from '@/components/ui/SelRingkas'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -34,15 +35,29 @@ function DashboardManajemen() {
 
   return (
     <div className="space-y-4">
-      {/* KPI — satu panel, dipisah hairline (bukan enam kartu bershadow) */}
-      <section className="grid grid-cols-2 divide-hairline border border-hairline bg-panel md:grid-cols-3 xl:grid-cols-6 md:divide-x">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="label-caps">Ruang kerja manajemen</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">Bisnis Anda, dalam satu pandangan.</h2><p className="mt-2 text-sm text-ink-3">Pantau pergerakan stok, peluang penjualan, dan hasil setiap unit.</p></div><span className="rounded-full border border-hairline bg-panel px-4 py-2 text-xs text-ink-2">{tanggalPendek(DEMO_TODAY)} · Semua cabang</span></div>
+      <section className="showcase-kpis grid grid-cols-2 divide-hairline border border-hairline bg-panel md:grid-cols-3 xl:grid-cols-6 md:divide-x">
         <SelRingkas label="Unit Tersedia" nilai={<Angka nilai={k.unitTersedia} ukuran="xl" />} catatan={`${totalUnit} unit total, ${perStatus.SOLD} terjual`} />
-        <SelRingkas label="Nilai Inventory" nilai={<Money nilai={k.nilaiInventory} ukuran="xl" ringkas />} catatan={`modal ${rupiahRingkas(k.totalModalStok)}`} />
+        <SelRingkas label="Nilai Stok" nilai={<Money nilai={k.nilaiInventory} ukuran="xl" ringkas />} catatan={`modal ${rupiahRingkas(k.totalModalStok)}`} />
         <SelRingkas label="Terjual Bulan Ini" nilai={<Angka nilai={k.unitTerjualBulanIni} ukuran="xl" suffix="unit" />} catatan={rupiahRingkas(k.nilaiPenjualanBulanIni)} />
-        <SelRingkas label="Gross Profit Bulan Ini" nilai={<Money nilai={k.grossProfitBulanIni} ukuran="xl" ringkas nada="positif" />} catatan={`margin ${(k.marginRataRata * 100).toFixed(1).replace('.', ',')}% rata-rata`} />
+        <SelRingkas label="Laba Kotor Bulan Ini" nilai={<Money nilai={k.grossProfitBulanIni} ukuran="xl" ringkas nada="positif" />} catatan={`margin ${(k.marginRataRata * 100).toFixed(1).replace('.', ',')}% rata-rata`} />
         <SelRingkas label="Lead Aktif" nilai={<Angka nilai={k.leadAktif} ukuran="xl" />} catatan={`dari ${k.totalLead} lead · ${dataset.customers.length} customer`} />
         <SelRingkas label="Rata-rata Hari Terjual" nilai={<Angka nilai={k.rataRataHariTerjual} ukuran="xl" suffix="hari" />} catatan={`piutang ${rupiahRingkas(k.piutang)}`} />
       </section>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.5fr_1fr]">
+        <Panel judul="Tren penjualan" keterangan="Nilai penjualan dalam enam bulan terakhir" aksi={<span className="rounded-full bg-accent-soft px-3 py-1 text-xs text-accent">{rupiahRingkas(penjualan.reduce((sum, b) => sum + b.nilai, 0))} total</span>}>
+          <div className="flex h-44 items-end gap-3 border-b border-hairline pt-5 sm:gap-6" role="img" aria-label={penjualan.map(b => `${bulanLabel(b.bulan)}: ${rupiahRingkas(b.nilai)}`).join(', ')}>
+            {penjualan.map((b, i) => <div key={b.bulan} className="flex h-full min-w-0 flex-1 flex-col justify-end text-center"><span className="mb-2 whitespace-nowrap text-[10px] font-medium text-ink-2 sm:text-xs">{rupiahRingkas(b.nilai)}</span><div className={'mx-auto w-full max-w-14 rounded-t-md ' + (i === penjualan.length - 1 ? 'bg-accent' : 'bg-[#b5c9ce]')} style={{ height: `${Math.max(2, b.nilai / Math.max(1, ...penjualan.map(x => x.nilai)) * 78)}%` }} /></div>)}
+          </div>
+          <div className="mt-3 flex gap-3 sm:gap-6">{penjualan.map(b => <span key={b.bulan} className="min-w-0 flex-1 text-center text-[10px] text-ink-3 sm:text-xs">{bulanLabel(b.bulan).split(' ')[0]}</span>)}</div>
+        </Panel>
+        <Link to="/inventory/VH-2026-0001" className="group relative flex min-h-64 flex-col justify-end overflow-hidden rounded-panel bg-[#17272c] p-6 text-white">
+          <VehiclePhoto unit={{ brand: 'Toyota', model: 'Fortuner' }} priority className="absolute inset-0 h-full w-full opacity-65 transition-transform duration-300 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#102127] via-[#102127]/30 to-transparent" />
+          <div className="relative"><span className="rounded-full bg-white/15 px-3 py-1 text-[10px] tracking-wider backdrop-blur">MULAI DEMO DI SINI</span><h2 className="mt-4 text-xl font-semibold">Satu mobil. Seluruh ceritanya.</h2><p className="mt-2 max-w-sm text-xs leading-relaxed text-white/80">Ikuti Fortuner dari pembelian, perbaikan, sampai laba penjualan.</p><span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#e9c49a]">Telusuri perjalanan unit <ArrowRight size={16} /></span></div>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Perlu perhatian */}

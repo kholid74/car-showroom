@@ -7,13 +7,16 @@ import { IdChip } from '@/components/ui/IdChip'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { SelRingkas, StripRingkas } from '@/components/ui/SelRingkas'
 import { Baris, Table, Td, Th, THead } from '@/components/ui/Table'
+import { Button } from '@/components/ui/Button'
 import { STATUS_PEMBAYARAN } from '@/lib/status'
 import { dataset } from '@/data'
+import { useSesi } from '@/store/sesi'
 import { labaOperasional, piutangPenjualan, profitPerBulan, ringkasanPenjualan } from '@/data/agregat-keuangan'
 import { persen, rupiahRingkas, tanggalPendek } from '@/lib/format'
 import { DEMO_TODAY } from '@/data'
 
 export function FinancePage() {
+  const lunasiPenjualan = useSesi((s) => s.lunasiPenjualan)
   const ringkas = useMemo(() => ringkasanPenjualan(), [])
   const piutang = useMemo(() => piutangPenjualan(), [])
   const perBulan = useMemo(() => profitPerBulan(), [])
@@ -189,8 +192,8 @@ export function FinancePage() {
             ) : (
               <ul className="divide-y divide-hairline">
                 {piutang.map(({ sale, unit, umurHari }) => (
-                  <li key={sale.id}>
-                    <Link to={`/inventory/${sale.vehicleId}?tab=penjualan`} className="block px-4 py-2.5 hover:bg-sunken">
+                  <li key={sale.id} className="px-4 py-2.5">
+                    <Link to={`/inventory/${sale.vehicleId}?tab=penjualan`} className="block">
                       <div className="flex items-start justify-between gap-3">
                         <span className="min-w-0">
                           <span className="block truncate text-xs text-ink">
@@ -202,18 +205,32 @@ export function FinancePage() {
                         </span>
                         <Money nilai={sale.sisaPembayaran} ukuran="sm" nada="perhatian" />
                       </div>
-                      <span className="mt-1 flex items-center justify-between gap-2 text-2xs text-ink-3">
-                        <span>
-                          <StatusPill
-                            label={STATUS_PEMBAYARAN[sale.status]?.label ?? sale.status}
-                            pil={STATUS_PEMBAYARAN[sale.status]?.halus ?? 'bg-sunken text-ink-2'}
-                            dot={STATUS_PEMBAYARAN[sale.status]?.dot}
-                            padat
-                          />
-                        </span>
+                    </Link>
+                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-2xs text-ink-3">
+                      <span className="flex items-center gap-2">
+                        <StatusPill
+                          label={STATUS_PEMBAYARAN[sale.status]?.label ?? sale.status}
+                          pil={STATUS_PEMBAYARAN[sale.status]?.halus ?? 'bg-sunken text-ink-2'}
+                          dot={STATUS_PEMBAYARAN[sale.status]?.dot}
+                          padat
+                        />
                         <span>{umurHari} hari sejak transaksi</span>
                       </span>
-                    </Link>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          lunasiPenjualan(
+                            sale.id,
+                            sale.vehicleId,
+                            unit ? `${unit.brand} ${unit.model}` : sale.vehicleId,
+                            sale.sisaPembayaran,
+                          )
+                        }
+                      >
+                        Tandai lunas
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

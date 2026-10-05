@@ -34,10 +34,10 @@ export const NAVIGASI: GrupNav[] = [
   {
     judul: 'Operasional',
     item: [
-      { label: 'Inventory', ke: '/inventory', ikon: Car, peran: SEMUA, keterangan: 'Stok unit dan statusnya' },
-      { label: 'Procurement', ke: '/procurement', ikon: Handshake, peran: ['OWNER', 'ADMIN'], keterangan: 'Pembelian unit dari penjual' },
+      { label: 'Stok Kendaraan', ke: '/inventory', ikon: Car, peran: SEMUA, keterangan: 'Stok unit dan statusnya' },
+      { label: 'Pembelian', ke: '/procurement', ikon: Handshake, peran: ['OWNER', 'ADMIN'], keterangan: 'Pembelian unit dari penjual' },
       { label: 'Inspeksi', ke: '/inspeksi', ikon: ClipboardCheck, peran: ['OWNER', 'ADMIN'], keterangan: 'Hasil pemeriksaan unit' },
-      { label: 'Reconditioning', ke: '/reconditioning', ikon: Wrench, peran: ['OWNER', 'ADMIN'], keterangan: 'Pekerjaan perbaikan dan biayanya' },
+      { label: 'Perbaikan', ke: '/reconditioning', ikon: Wrench, peran: ['OWNER', 'ADMIN'], keterangan: 'Pekerjaan perbaikan dan biayanya' },
       { label: 'Dokumen', ke: '/dokumen', ikon: FileText, peran: ['OWNER', 'ADMIN'], keterangan: 'Kelengkapan berkas unit' },
     ],
   },
@@ -45,7 +45,7 @@ export const NAVIGASI: GrupNav[] = [
     judul: 'Penjualan',
     item: [
       { label: 'CRM & Leads', ke: '/crm', ikon: Users, peran: SEMUA, keterangan: 'Pipeline dan follow-up' },
-      { label: 'Customer', ke: '/customer', ikon: UserRound, peran: SEMUA, keterangan: 'Riwayat hubungan pelanggan' },
+      { label: 'Pelanggan', ke: '/customer', ikon: UserRound, peran: SEMUA, keterangan: 'Riwayat hubungan pelanggan' },
       { label: 'Booking', ke: '/booking', ikon: CalendarCheck, peran: SEMUA, keterangan: 'Booking dan DP' },
       { label: 'Penjualan', ke: '/penjualan', ikon: Receipt, peran: SEMUA, keterangan: 'Transaksi sampai serah terima' },
     ],
@@ -53,7 +53,7 @@ export const NAVIGASI: GrupNav[] = [
   {
     judul: 'Keuangan',
     item: [
-      { label: 'Finance', ke: '/finance', ikon: Wallet, peran: ['OWNER'], keterangan: 'Modal, penjualan, profit per unit' },
+      { label: 'Keuangan', ke: '/finance', ikon: Wallet, peran: ['OWNER'], keterangan: 'Modal, penjualan, profit per unit' },
       { label: 'Biaya Operasional', ke: '/biaya', ikon: Receipt, peran: ['OWNER'], keterangan: 'Pengeluaran bulanan showroom' },
     ],
   },

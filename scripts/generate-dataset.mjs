@@ -792,6 +792,11 @@ const dataset = {
 }
 
 // ---------- pengawasan ringan saat generate ----------
+// Pertahankan seed, lalu turunkan transmisi dari varian agar spesifikasi selalu cocok.
+for (const v of vehicles) {
+  if (/\b(AT|CVT)\b/.test(v.variant)) v.transmisi = 'AT'
+  else if (/\bMT\b/.test(v.variant)) v.transmisi = 'MT'
+}
 const errors = []
 vehicles.forEach((v) => {
   if (v.totalCost !== v.purchasePrice + v.reconCost + v.otherCost) errors.push(`${v.id}: totalCost tidak konsisten`)

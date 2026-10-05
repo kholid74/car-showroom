@@ -9,6 +9,7 @@ import { STATUS_LEAD } from '@/lib/status'
 import { dataset, DEMO_TODAY } from '@/data'
 import { useSesi } from '@/store/sesi'
 import { FormLead } from '@/components/app/FormLead'
+import { FormBooking } from '@/components/app/FormBooking'
 import { Button } from '@/components/ui/Button'
 import { jarakHari, persen, rupiahRingkas, tanggalPanjang, tanggalPendek, jam } from '@/lib/format'
 import type { LeadStatus } from '@/data/types'
@@ -21,6 +22,7 @@ export function LeadDetailPage() {
   const perubahan = sesi.tahapLead
   const pindahkan = sesi.pindahkanLead
   const [formUbah, setFormUbah] = useState(false)
+  const [formBooking, setFormBooking] = useState(false)
   const lead = dataset.leads.find((l) => l.id === leadId)
 
   if (!lead) {
@@ -60,6 +62,7 @@ export function LeadDetailPage() {
             <Button variant="secondary" size="sm" ikon={<Pencil size={13} />} onClick={() => setFormUbah(true)}>
               Ubah lead
             </Button>
+            {unit?.status === 'READY' && !['WON', 'LOST'].includes(lead.status) && <Button variant="primary" size="sm" onClick={() => setFormBooking(true)}>Buat booking</Button>}
             {perubahan[lead.id] && (
               <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-2xs text-accent">
                 tahap diubah di sesi demo (dari {STATUS_LEAD[lead.status].label})
@@ -270,6 +273,7 @@ export function LeadDetailPage() {
       </div>
 
       {formUbah && <FormLead terbuka lead={lead} onTutup={() => setFormUbah(false)} />}
+      {formBooking && unit && <FormBooking terbuka unitAwal={unit} leadAwal={lead} onTutup={() => setFormBooking(false)} />}
     </div>
   )
 }

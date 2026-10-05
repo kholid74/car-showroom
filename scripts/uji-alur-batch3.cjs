@@ -29,7 +29,7 @@ const rp = (t) => t.replace(/\s+/g, ' ').trim()
 
   await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(400)
-  await page.getByRole('button', { name: 'Masuk', exact: true }).click()
+  await page.getByRole('button', { name: /Owner & manajemen/ }).click()
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 10000 })
 
   // ================= 1. CATAT PEMBELIAN UNIT =================

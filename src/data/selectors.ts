@@ -216,7 +216,10 @@ export function notifikasi(): Notifikasi[] {
   }
 
   const bookingSegera = dataset.bookings.filter(
-    (b) => b.statusPembayaran !== 'LUNAS' && selisihHari(DEMO_TODAY, b.kadaluarsa) <= 5,
+    (b) => !['LUNAS', 'SELESAI'].includes(b.statusPembayaran)
+      && dataset.vehicles.some((v) => v.id === b.vehicleId && v.status === 'BOOKED')
+      && selisihHari(DEMO_TODAY, b.kadaluarsa) >= 0
+      && selisihHari(DEMO_TODAY, b.kadaluarsa) <= 5,
   )
   if (bookingSegera.length) {
     hasil.push({

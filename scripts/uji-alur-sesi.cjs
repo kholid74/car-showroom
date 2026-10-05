@@ -34,11 +34,11 @@ const angkaDari = (teks, label) => {
   // ---------- masuk ----------
   await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(500)
-  await page.getByRole('button', { name: 'Masuk', exact: true }).click()
+  await page.getByRole('button', { name: /Owner & manajemen/ }).click()
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 10000 })
 
   // ---------- 1. TAMBAH UNIT ----------
-  await page.goto(BASE + '/inventory', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(600)
   const unitAwal = await barisTabel(page)
   const judulAwal = await teksUtama(page)
@@ -71,7 +71,7 @@ const angkaDari = (teks, label) => {
   catat(!isiLaporan.includes(judulAwal), 'laporan dirender ulang setelah ada unit baru')
 
   // ---------- 2. UBAH TAHAP UNIT ----------
-  await page.goto(BASE + '/inventory?status=SEMUA', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel&status=SEMUA', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(600)
   const barisBaru = page.locator('main table tbody tr', { hasText: 'Wuling' }).first()
   await barisBaru.getByRole('button', { name: /Ubah tahap/ }).click()
@@ -103,7 +103,7 @@ const angkaDari = (teks, label) => {
   const isiJualAwal = await teksUtama(page)
   const nilaiAwal = angkaDari(isiJualAwal, 'Nilai Penjualan')
 
-  await page.goto(BASE + '/inventory?status=READY', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel&status=READY', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(600)
   const unitSiap = await page.evaluate(() => {
     const a = document.querySelector('main table tbody tr a[href^="/inventory/"]')
@@ -172,7 +172,7 @@ const angkaDari = (teks, label) => {
 
   await page.getByRole('button', { name: 'Kembalikan ke data demo' }).click()
   await page.waitForTimeout(900)
-  await page.goto(BASE + '/inventory', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(700)
   catat((await barisTabel(page)) === unitAwal, `setelah reset, inventory kembali ke ${unitAwal} baris`)
   const isiReset = await teksUtama(page)

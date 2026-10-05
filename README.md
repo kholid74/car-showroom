@@ -101,11 +101,8 @@ demo dengan 11 penjualan, target 12 unit per orang per bulan akan langsung terli
 
 ## Batasan yang disengaja
 
-- **Tanpa backend.** Perubahan tahap lead pada halaman CRM hanya berlaku selama sesi dan kembali setelah halaman
-  dimuat ulang; antarmuka menyatakan hal ini secara terbuka.
-- **Katalog publik tanpa foto.** Demo ini tidak memuat berkas foto unit. Setiap kartu menampilkan *slot foto*
-  secara terbuka (jumlah foto yang tercatat di sistem ikut ditampilkan), bukan gambar karangan. Nomor WhatsApp
-  showroom juga sengaja kosong: tombolnya menjelaskan hal itu alih-alih memakai nomor palsu.
+- **Tanpa backend.** Perubahan tersimpan di sessionStorage selama tab terbuka, termasuk tahap lead. Navigasi katalog menggunakan tab yang sama agar inquiry dan ERP membaca sesi yang sama.
+- **Foto ilustrasi model.** Katalog, inventory, dan detail memakai asset lokal dari Wikimedia Commons. Tahun, warna, dan varian foto dapat berbeda dari data contoh. Atribusi ada di /photo-credits.html. Tombol WhatsApp menampilkan pratinjau pesan; tidak mengirim pesan sungguhan.
 - **Minat dari katalog** masuk ke CRM sebagai lead bersumber Website, ditugaskan ke sales dengan lead aktif paling
   sedikit, dan disimpan di `sessionStorage` — bertahan saat halaman dimuat ulang, hilang saat tab ditutup, tidak
   dikirim ke server mana pun.
@@ -144,23 +141,26 @@ dan semua tulisan melewati **satu lapisan sesi** (`src/store/sesi.ts`) sehingga 
 
 | Modul | Tombol yang tersedia |
 |---|---|
-| Inventory | Tambah unit · Ubah data unit · Ubah tahap (gerbang proses, wajib catatan) |
+| Inventory | Tambah unit · Ubah data unit · Ubah tahap (gerbang proses: wajib catatan, dan tahap Perbaikan/Siap Jual hanya terbuka setelah inspeksi tercatat dan perbaikan selesai) |
 | Pembelian | Catat pembelian unit · Ubah harga penawaran/deal · Tandai dokumen penjual diterima |
-| Inspeksi | Isi hasil inspeksi per titik periksa (skor & rekomendasi diturunkan dari temuan) |
-| Reconditioning | Tambah pekerjaan (menambah modal unit) · Tandai selesai |
+| Inspeksi | Isi hasil inspeksi per titik periksa (skor & rekomendasi diturunkan dari temuan) · Antrean unit yang menunggu inspeksi |
+| Reconditioning | Catatan perbaikan dibuat otomatis saat unit masuk tahap Perbaikan · Tambah pekerjaan (menambah modal unit) · Selesaikan per pekerjaan · Tandai selesai |
 | Dokumen | Kelola kelengkapan enam berkas per unit |
 | CRM | Tambah lead · Ubah lead · Pindah tahap |
 | Customer | Tambah customer · Ubah customer |
 | Booking | Buat booking · Ubah DP · Batalkan booking |
 | Penjualan | Catat penjualan · Tandai serah terima |
+| Keuangan | Tandai lunas piutang transaksi yang belum dibayar penuh |
 | Biaya | Catat biaya · Ubah · Hapus |
 
 **Baca-saja dengan alasan tertulis di layar:** Laporan dan Performa Sales — halaman laporan tidak diisi
 manual, dan layarnya menyatakan itu supaya tidak terbaca sebagai halaman yang belum jadi.
 
 **Batas yang disengaja:** unit yang belum lolos inspeksi/reconditioning tidak punya tombol catat penjualan,
-dan pembelian yang sudah tercatat tidak bisa "dibatalkan" begitu saja — membatalkan pembelian unit yang
-sudah ada di inventory akan menciptakan keadaan yang mustahil. Batas ini ditegakkan, bukan dihilangkan.
+tahap unit hanya bisa maju satu langkah dan menuntut bukti kerjanya (hasil inspeksi sebelum Perbaikan,
+perbaikan selesai sebelum Siap Jual), dan pembelian yang sudah tercatat tidak bisa "dibatalkan" begitu saja —
+membatalkan pembelian unit yang sudah ada di inventory akan menciptakan keadaan yang mustahil. Batas ini
+ditegakkan, bukan dihilangkan.
 
 Semua perubahan hidup di tab ini (sessionStorage), tampil di spanduk sesi di atas setiap halaman, dan bisa
 dikembalikan dengan satu tombol **Kembalikan ke data demo**.

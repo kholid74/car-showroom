@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Camera, Car, ChevronRight, Fuel, Gauge, Search, Settings2, X } from 'lucide-react'
+import { ChevronRight, Fuel, Gauge, Search, Settings2, X } from 'lucide-react'
 import { dataset } from '@/data'
+import { VehiclePhoto } from '@/components/ui/VehiclePhoto'
 import { Money } from '@/components/ui/Money'
 import { Button } from '@/components/ui/Button'
 import { angka, rupiahRingkas } from '@/lib/format'
@@ -21,23 +22,8 @@ const URUT = [
   { kunci: 'km', label: 'KM terendah' },
 ]
 
-/** Slot foto: demo ini tidak memuat berkas foto, dan itu dinyatakan terbuka. */
-export function SlotFoto({ unit, tinggi = 'aspect-[4/3]' }: { unit: { foto: { ref: string; jumlahTersedia: number } }; tinggi?: string }) {
-  return (
-    <div className={`relative flex ${tinggi} w-full items-center justify-center overflow-hidden bg-sunken`}>
-      <span className="absolute inset-3 rounded-control border border-dashed border-hairline-strong" aria-hidden />
-      <span className="relative flex flex-col items-center gap-1.5 px-4 text-center">
-        <Car size={26} className="text-ink-3" />
-        <span className="inline-flex items-center gap-1 text-2xs font-medium text-ink-3">
-          <Camera size={12} />
-          Slot foto unit
-        </span>
-        <span className="text-2xs text-ink-3">
-          {unit.foto.jumlahTersedia} foto tersedia di sistem · berkas tidak disertakan pada demo
-        </span>
-      </span>
-    </div>
-  )
+export function SlotFoto({ unit, tinggi = 'aspect-[4/3]' }: { unit: { brand: string; model: string }; tinggi?: string }) {
+  return <VehiclePhoto unit={unit} className={tinggi} />
 }
 
 export function KatalogPage() {
@@ -85,21 +71,15 @@ export function KatalogPage() {
   }, [tersedia, q, merek, kelas, transmisi, harga, urut])
 
   const adaFilter = q !== '' || merek !== 'SEMUA' || kelas !== 'SEMUA' || transmisi !== 'SEMUA' || harga !== 'Semua harga'
-  const termurah = Math.min(...hasil.map((v) => v.listingPrice), 0)
+  const termurah = hasil.length ? Math.min(...hasil.map((v) => v.listingPrice)) : 0
 
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="label-caps">Katalog unit</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-          {hasil.length} unit siap dilihat
-        </h1>
-        <p className="mt-1.5 max-w-3xl text-xs leading-relaxed text-ink-2">
-          Semua unit di halaman ini sudah melewati inspeksi dan reconditioning, dan statusnya siap dijual di sistem
-          internal showroom. Harga yang tampil adalah harga penawaran, bukan harga akhir setelah negosiasi.
-          {hasil.length > 0 && <> Termurah saat ini {rupiahRingkas(termurah)}.</>}
-        </p>
-      </div>
+    <div className="space-y-7">
+      <section className="relative overflow-hidden rounded-[20px] bg-[#17272c] p-7 text-white md:p-10">
+        <VehiclePhoto unit={{ brand: 'Toyota', model: 'Fortuner' }} priority className="absolute inset-y-0 right-0 hidden h-full w-1/2 opacity-65 md:block" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#17272c] via-[#17272c]/90 to-transparent" />
+        <div className="relative max-w-lg"><p className="text-xs tracking-[0.2em] text-[#e9c49a]">PILIHAN BERIKUTNYA, PERJALANAN BARU</p><h1 className="mt-4 text-3xl font-semibold leading-tight md:text-[42px]">Temukan mobil yang<br />tepat untuk Anda.</h1><p className="mt-4 max-w-md text-sm leading-relaxed text-white/75">Pilihan kendaraan dengan riwayat inspeksi, perawatan, dan dokumen yang bisa Anda lihat.</p><div className="mt-6 flex flex-wrap gap-3 text-xs"><span className="rounded-full bg-white/10 px-3 py-2">{tersedia.length} unit siap dijual</span><span className="rounded-full bg-white/10 px-3 py-2">Jakarta Selatan & Bekasi</span></div></div>
+      </section>
 
       <div className="rounded-panel border border-hairline bg-pub-panel">
         <div className="flex flex-wrap items-center gap-2 px-3 py-3">
@@ -201,6 +181,7 @@ export function KatalogPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-xl font-semibold">Pilihan kendaraan</h2><p className="mt-1 text-xs text-ink-3">{hasil.length} unit ditemukan{hasil.length > 0 && <> · Mulai {rupiahRingkas(termurah)}</>}</p></div><p className="text-xs text-ink-3">Stok demo · Foto ilustrasi model</p></div>
       {hasil.length === 0 ? (
         <div className="rounded-panel border border-hairline bg-pub-panel px-5 py-12 text-center">
           <p className="text-sm text-ink-2">Belum ada unit yang cocok dengan pilihan itu.</p>
@@ -217,14 +198,14 @@ export function KatalogPage() {
             <li key={v.id}>
               <Link
                 to={`/katalog/${v.id}`}
-                className="group flex h-full flex-col overflow-hidden rounded-panel border border-hairline bg-pub-panel transition-colors duration-[var(--dur-fast)] hover:border-hairline-strong"
+                className="group flex h-full flex-col overflow-hidden rounded-panel border border-hairline bg-panel shadow-sm transition-colors duration-[var(--dur-fast)] hover:border-hairline-strong"
               >
                 <SlotFoto unit={v} />
-                <div className="flex flex-1 flex-col p-3.5">
+                <div className="flex flex-1 flex-col p-5">
                   <p className="text-2xs text-ink-3">
                     {v.tahun} · {v.kelas} · {v.warna}
                   </p>
-                  <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-ink group-hover:text-accent">
+                  <h2 className="mt-0.5 text-lg font-semibold tracking-tight text-ink group-hover:text-accent">
                     {v.brand} {v.model}
                   </h2>
                   <p className="mt-0.5 truncate text-2xs text-ink-2">{v.variant}</p>

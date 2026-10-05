@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ChevronRight, FileWarning, LayoutGrid, List, Pencil, Plus, Search, X } from 'lucide-react'
+import { VehiclePhoto } from '@/components/ui/VehiclePhoto'
 import { Panel } from '@/components/ui/Panel'
 import { Money, Angka } from '@/components/ui/Money'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -51,7 +52,7 @@ export function InventoryPage() {
   const cabang = params.get('cabang') ?? 'SEMUA'
   const urut = (params.get('urut') ?? 'masuk') as KunciUrut
   const arah = (params.get('arah') ?? 'desc') as Arah
-  const tampilan = (params.get('tampilan') ?? 'tabel') as Tampilan
+  const tampilan = (params.get('tampilan') ?? 'kartu') as Tampilan
 
   const aturParam = (kunci: string, nilai: string) => {
     const berikut = new URLSearchParams(params)
@@ -359,10 +360,10 @@ export function InventoryPage() {
             const dok = dokumenByUnit(v.id)
             const dokBermasalah = dok?.checklist.filter((c) => c.status !== 'Tersedia').length ?? 0
             return (
-              <article key={v.id} className="flex flex-col border border-hairline bg-panel rounded-panel">
+              <article key={v.id} className="flex overflow-hidden flex-col border border-hairline bg-panel rounded-panel shadow-sm"><Link to={`/inventory/${v.id}`} aria-label={`Lihat ${v.brand} ${v.model}`}><VehiclePhoto unit={v} className="aspect-[16/10]" /></Link>
                 <header className="flex items-start justify-between gap-3 border-b border-hairline px-3 py-2.5">
                   <div className="min-w-0">
-                    <h3 className="truncate text-xs font-semibold text-ink">{v.brand} {v.model}</h3>
+                    <h3 className="truncate text-base font-semibold text-ink">{v.brand} {v.model}</h3>
                     <p className="truncate text-2xs text-ink-3">{v.variant}</p>
                   </div>
                   <StatusPill label={STATUS_UNIT[v.status].label} pil={STATUS_UNIT[v.status].pil} />

@@ -28,7 +28,7 @@ const rp = (t) => t.replace(/\s+/g, ' ').trim()
 
   await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(400)
-  await page.getByRole('button', { name: 'Masuk', exact: true }).click()
+  await page.getByRole('button', { name: /Owner & manajemen/ }).click()
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 10000 })
 
   // ================= 1. BIAYA: tambah, ubah, hapus =================
@@ -83,7 +83,7 @@ const rp = (t) => t.replace(/\s+/g, ' ').trim()
   await page.waitForTimeout(900)
   catat((await baris(page)) === book0 + 1, `booking bertambah 1 baris (${book0} → ${await baris(page)})`)
 
-  await page.goto(BASE + '/inventory?status=BOOKED', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel&status=BOOKED', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(700)
   catat((await utama(page)).includes(unitDipilih), `unit ${unitDipilih} otomatis keluar dari stok siap jual (status Booked)`)
 
@@ -108,7 +108,7 @@ const rp = (t) => t.replace(/\s+/g, ' ').trim()
   await page.getByRole('dialog').getByRole('button', { name: 'Ya, batalkan booking' }).click()
   await page.waitForTimeout(900)
   catat((await baris(page)) === book0, `booking dibatalkan, kembali ke ${book0} baris`)
-  await page.goto(BASE + '/inventory?status=READY', { waitUntil: 'domcontentloaded' })
+  await page.goto(BASE + '/inventory?tampilan=tabel&status=READY', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(600)
   catat((await utama(page)).includes(unitDipilih), `unit ${unitDipilih} kembali ke stok Ready setelah booking batal`)
 

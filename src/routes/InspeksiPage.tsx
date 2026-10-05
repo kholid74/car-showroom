@@ -51,6 +51,13 @@ export function InspeksiPage() {
 
   const adaFilter = q !== '' || rekomendasi !== 'SEMUA'
 
+  // Antrean inspeksi: unit yang sudah masuk tahap Inspeksi tetapi belum punya hasil pemeriksaan.
+  // Tanpa daftar ini, unit tersebut tidak punya jalan masuk ke form inspeksi sama sekali.
+  const menunggu = useMemo(() => {
+    const sudah = new Set(dataset.inspections.map((i) => i.vehicleId))
+    return dataset.vehicles.filter((v) => v.status === 'INSPEKSI' && !sudah.has(v.id))
+  }, [])
+
   return (
     <div className="space-y-4">
       <StripRingkas kolom={5}>
@@ -124,6 +131,35 @@ export function InspeksiPage() {
           </Button>
         )}
       </div>
+
+      {menunggu.length > 0 && (
+        <Panel
+          judul={`${menunggu.length} unit menunggu inspeksi`}
+          keterangan="Unit berstatus Inspeksi yang belum punya hasil pemeriksaan — tanpa hasil ini unit tidak bisa masuk tahap Perbaikan"
+          padat
+        >
+          <ul className="divide-y divide-hairline">
+            {menunggu.map((v) => (
+              <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+                <span className="flex min-w-0 items-center gap-2">
+                  <Link to={`/inventory/${v.id}?tab=inspeksi`} className="group min-w-0">
+                    <span className="block truncate text-xs font-medium text-ink group-hover:text-accent">
+                      {v.brand} {v.model} {v.tahun}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-2">
+                      <IdChip nilai={v.id} />
+                      <span className="text-2xs text-ink-3">{v.variant}</span>
+                    </span>
+                  </Link>
+                </span>
+                <Button variant="secondary" size="sm" ikon={<Pencil size={13} />} onClick={() => setFormInspeksi(v)}>
+                  Isi hasil inspeksi
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <Panel
